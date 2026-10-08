@@ -61,9 +61,23 @@ prepare_app_env() {
     fail "'$app' needs a versioned .env.example before deployment."
   fi
   grep -Eq '(^|/)\.env(\*|\.\*|[[:space:]]|$)' "$dir/.dockerignore" 2>/dev/null || fail "'$app' must exclude .env from its Docker build context via .dockerignore"
+  if [[ "$ENVIRONMENT" == dev && "$app" == hermes ]]; then
+    local tmp
+    tmp="$(mktemp)"
+    awk -F= '
+      {
+        key=$1; sub(/^export[[:space:]]+/, "", key)
+        if (key ~ /^HERMES_ENCRYPTION_(PRIMARY_KEY|DETERMINISTIC_KEY|KEY_DERIVATION_SALT)$/ && $2 ~ /__REQUIRED__/) next
+        print
+      }
+    ' "$env" > "$tmp"
+    chmod 600 "$tmp"
+    mv -- "$tmp" "$env"
+  fi
   local required_key value
   while IFS= read -r required_key; do
     [[ -n "$required_key" ]] || continue
+    if [[ "$ENVIRONMENT" == dev && "$app" == hermes && "$required_key" =~ ^HERMES_ENCRYPTION_(PRIMARY_KEY|DETERMINISTIC_KEY|KEY_DERIVATION_SALT)$ ]]; then continue; fi
     value="$(awk -F= -v k="$required_key" '$1==k {sub(/^[^=]*=/, ""); print; exit}' "$env")"
     [[ -n "$value" && "$value" != *__REQUIRED__* ]] || fail "'$app'/.env still needs a value for $required_key."
   done < <(awk -F= '$2 ~ /__REQUIRED__/ {print $1}' "$example")
