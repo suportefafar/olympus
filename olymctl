@@ -81,7 +81,7 @@ prepare_app_env() {
     value="$(awk -F= -v k="$required_key" '$1==k {sub(/^[^=]*=/, ""); print; exit}' "$env")"
     [[ -n "$value" && "$value" != *__REQUIRED__* ]] || fail "'$app'/.env still needs a value for $required_key."
   done < <(awk -F= '$2 ~ /__REQUIRED__/ {print $1}' "$example")
-  if grep -Eq '(^|=)(changeme|change_me|password|your_.*_here|asdfasdf|TODO)([[:space:]]|$)|__REQUIRED__' "$env"; then fail "'$app'/.env contains a known placeholder; edit it before startup."; fi
+  if awk '!/^[[:space:]]*#/' "$env" | grep -Eq '(^|=)(changeme|change_me|password|your_.*_here|asdfasdf|TODO)([[:space:]]|$)|__REQUIRED__'; then fail "'$app'/.env contains a known placeholder; edit it before startup."; fi
 }
 ensure_dev_hosts() {
   [[ "$ENVIRONMENT" == dev ]] || return 0
