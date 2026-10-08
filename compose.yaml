@@ -1,0 +1,108 @@
+name: olympus
+services:
+  postgres-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    shm_size: 256mb
+    networks: [backend]
+
+  mongo-db:
+    image: mongo:8
+    restart: unless-stopped
+    volumes: [mongo-data:/data/db]
+    networks: [backend]
+
+  hermes:
+    build: {context: ../hermes}
+    env_file: [../hermes/.env]
+    depends_on: [postgres-db]
+    restart: unless-stopped
+    networks: [backend, edge]
+
+  escuta-website:
+    build: {context: ../escuta-website}
+    env_file: [../escuta-website/.env]
+    depends_on: [postgres-db]
+    restart: unless-stopped
+    networks: [backend, edge]
+
+  chatrapido:
+    build: {context: ../chatrapido}
+    env_file: [../chatrapido/.env]
+    depends_on: [postgres-db]
+    volumes: [../chatrapido/storage:/rails/storage]
+    restart: unless-stopped
+    networks: [backend, edge]
+
+  stagemanager:
+    build: {context: ../stagemanager}
+    env_file: [../stagemanager/.env]
+    depends_on: [postgres-db]
+    volumes: [../stagemanager/storage:/rails/storage]
+    restart: unless-stopped
+    networks: [backend, edge]
+
+  dike:
+    build: {context: ../dike}
+    env_file: [../dike/.env]
+    restart: unless-stopped
+    networks: [edge]
+
+  temis:
+    build: {context: ../temis}
+    env_file: [../temis/.env]
+    restart: unless-stopped
+    networks: [edge]
+
+  prometheus-bot:
+    build: {context: ../prometheus-bot}
+    env_file: [../prometheus-bot/.env]
+    depends_on: [mongo-db]
+    restart: unless-stopped
+    networks: [backend, edge]
+
+  design-system:
+    build: {context: ../design-system}
+    env_file: [../design-system/.env]
+    restart: unless-stopped
+    networks: [edge]
+
+  laras2026-website:
+    image: nginx:alpine
+    env_file: [../laras2026-website/.env]
+    volumes: [../laras2026-website:/usr/share/nginx/html:ro]
+    restart: unless-stopped
+    networks: [edge]
+
+  cronos:
+    build: {context: ../cronos}
+    env_file: [../cronos/.env]
+    restart: unless-stopped
+    networks: [edge]
+
+  reverse-proxy:
+    build: {context: ../reverse-proxy/web-server}
+    env_file: [../reverse-proxy/.env]
+    environment:
+      CADDY_ENVIRONMENT: ${CADDY_ENVIRONMENT:-production}
+      DOMAIN_SUFFIX: ${DOMAIN_SUFFIX:-ufmg.br}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    networks: [edge]
+
+networks:
+  backend:
+    internal: true
+  edge: {}
+volumes:
+  postgres-data:
+  mongo-data:
+  caddy-data:
+  caddy-config:

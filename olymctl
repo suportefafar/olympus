@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_self() {
+  local path="${BASH_SOURCE[0]}" dir
+  while [[ -L "$path" ]]; do
+    dir="$(cd -P -- "$(dirname -- "$path")" >/dev/null 2>&1 && pwd)"
+    path="$(readlink -- "$path")"
+    [[ "$path" = /* ]] || path="$dir/$path"
+  done
+  cd -P -- "$(dirname -- "$path")" >/dev/null 2>&1 && pwd
+}
+ROOT="$(resolve_self)"
+WORKSPACE="$(cd "$ROOT/.." && pwd -P)"
+MANIFEST="$ROOT/apps.tsv"
+STATE="$ROOT/state"
+HISTORY="$STATE/events.tsv"
+LOCK="$STATE/lock"
+ENVFILE="$ROOT/.env"
+
+fail() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
+info() { printf '[INFO] %s\n' "$*"; }
+need() { command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"; }
+compose_files() {
+  COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENVFILE" -f "$ROOT/compose.yaml")
+  [[ "$ENVIRONMENT" == dev ]] && COMPOSE+=(-f "$ROOT/compose.dev.yaml")
+  [[ "$ENVIRONMENT" == prod ]] && COMPOSE+=(-f "$ROOT/compose.prod.yaml")
+}
+read_app() {
+  local requested="$1" line
+  APP_URL= APP_SERVICES= APP_DOMAINS= APP_ENV_REQUIRED=true
+  while IFS=$'\t' read -r name url services domains required || [[ -n "${name:-}" ]]; do
+    [[ -z "${name:-}" || "$name" == \#* ]] && continue
+    if [[ "$name" == "$requested" ]]; then APP_URL="$url"; APP_SERVICES="$services"; APP_DOMAINS="$domains"; APP_ENV_REQUIRED="$required"; return 0; fi
+  done < "$MANIFEST"
+  return 1
+}
+apps() { awk -F '\t' 'NF>=4 && $1 !~ /^#/ {print $1}' "$MANIFEST"; }
+repo_dir() { printf '%s/%s' "$WORKSPACE" "$1"; }
+
+copy_workspace_readme() {
+  local source="$ROOT/README.workspace.md" target="$WORKSPACE/README.md" tmp
+  if [[ ! -f "$source" ]]; then info "README source is missing; leaving workspace README untouched."; return 0; fi
+  tmp="$(mktemp "$WORKSPACE/.README.md.XXXXXX")"
+  cp -- "$source" "$tmp"
+  mv -f -- "$tmp" "$target"
+  info "Published workspace README from olympus/README.workspace.md"
+}
+prepare_app_env() {
+  local app="$1" dir example env
+  dir="$(repo_dir "$app")"; example="$dir/.env.example"; env="$dir/.env"
+  [[ -d "$dir/.git" ]] || fail "Missing checkout for '$app' at $dir"
+  [[ -f "$env" ]] || {
+    if [[ -f "$example" ]]; then cp -- "$example" "$env"; chmod 600 "$env"; info "Created $app/.env from .env.example; review placeholders before startup.";
+    elif [[ "$APP_ENV_REQUIRED" == true ]]; then fail "'$app' has no .env or .env.example. Add a reviewed template, then retry.";
+    else return 0; fi
+  }
+  if [[ -f "$example" ]]; then
+    grep -Eq '(^|/)\.env(\*|\.\*|[[:space:]]|$)' "$dir/.gitignore" 2>/dev/null || fail "'$app' must ignore .env in its .gitignore"
+  elif [[ "$APP_ENV_REQUIRED" == true ]]; then
+    fail "'$app' needs a versioned .env.example before deployment."
+  fi
+  grep -Eq '(^|/)\.env(\*|\.\*|[[:space:]]|$)' "$dir/.dockerignore" 2>/dev/null || fail "'$app' must exclude .env from its Docker build context via .dockerignore"
+  local required_key value
+  while IFS= read -r required_key; do
+    [[ -n "$required_key" ]] || continue
+    value="$(awk -F= -v k="$required_key" '$1==k {sub(/^[^=]*=/, ""); print; exit}' "$env")"
+    [[ -n "$value" && "$value" != *__REQUIRED__* ]] || fail "'$app'/.env still needs a value for $required_key."
+  done < <(awk -F= '$2 ~ /__REQUIRED__/ {print $1}' "$example")
+  if grep -Eq '(^|=)(changeme|change_me|password|your_.*_here|asdfasdf|TODO)([[:space:]]|$)|__REQUIRED__' "$env"; then fail "'$app'/.env contains a known placeholder; edit it before startup."; fi
+}
+ensure_dev_hosts() {
+  [[ "$ENVIRONMENT" == dev ]] || return 0
+  local domains host line add=()
+  while IFS=$'\t' read -r name url services domains required || [[ -n "${name:-}" ]]; do
+    [[ -z "${name:-}" || "$name" == \#* || -z "${domains:-}" ]] && continue
+    IFS=',' read -ra domain_list <<<"$domains"
+    for host in "${domain_list[@]}"; do
+      if ! awk -v h="$host" 'BEGIN{found=0} /^[[:space:]]*#/ {next} {for(i=2;i<=NF;i++) if ($i==h) found=1} END{exit !found}' /etc/hosts; then add+=("127.0.0.1 $host # olympus-managed"); fi
+    done
+  done < "$MANIFEST"
+  ((${#add[@]})) || return 0
+  command -v sudo >/dev/null 2>&1 || fail "Development hostnames need /etc/hosts updates; install sudo or add these entries as an administrator: ${add[*]}"
+  printf '%s\n' "${add[@]}" | sudo tee -a /etc/hosts >/dev/null || fail "Could not update /etc/hosts; no hostnames were claimed as configured."
+}
+
+validate_olympus_env() {
+  local key value
+  for key in POSTGRES_USER POSTGRES_PASSWORD; do
+    value="$(awk -F= -v k="$key" '$1==k {sub(/^[^=]*=/, ""); print; exit}' "$ENVFILE")"
+    [[ -n "$value" && "$value" != *__REQUIRED__* ]] || fail "olympus/.env needs a value for $key before startup."
+  done
+}
+
+check_prerequisites() {
+  need git; need docker; need curl
+  docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 plugin is required."
+  docker info >/dev/null 2>&1 || fail "Docker daemon unavailable (check service and permissions)."
+}
+check_clean() {
+  local dir="$1" label="$2" branch upstream tip
+  [[ -d "$dir/.git" ]] || return 0
+  if [[ -n "$(git -C "$dir" status --porcelain)" ]]; then fail "'$label' has uncommitted changes; commit or stash them before changing revisions."; fi
+  branch="$(git -C "$dir" branch --show-current)"
+  if [[ -n "$branch" ]]; then
+    upstream="$(git -C "$dir" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+    if [[ -n "$upstream" ]]; then
+      tip="$(git -C "$dir" rev-parse HEAD)"
+      git -C "$dir" merge-base --is-ancestor "$tip" "$upstream" || fail "'$label' has local commits not present on '$upstream'; preserve them before switching."
+    fi
+  fi
+}
+record() {
+  local env="$1" type="$2" app="$3" from="$4" to="$5" result="$6" detail="${7:-}" id now
+  mkdir -p "$STATE"; touch "$HISTORY"; exec 9>"$LOCK"; flock -x 9
+  id="$(($(tail -n 1 "$STATE/next-id" 2>/dev/null || printf '0') + 1))"
+  printf '%s\n' "$id" > "$STATE/next-id.tmp"; mv "$STATE/next-id.tmp" "$STATE/next-id"
+  now="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$now" "$env" "$type" "$app" "$from" "$to" "$result${detail:+; $detail}" >> "$HISTORY"
+  flock -u 9
+  printf '%s' "$id"
+}
+previous_deployment() {
+  local env="$1" app="$2" current="$3"
+  awk -F '\t' -v e="$env" -v a="$app" -v c="$current" '$3==e && $5==a && $4=="up" && $8 ~ /^success/ {items[++n]=$7} END {for (i=n;i>=1;i--) if (items[i]==c) {if (i>1) print items[i-1]; exit}}' "$HISTORY" 2>/dev/null
+}
+compose_app_services() {
+  local app="$1" service
+  IFS=',' read -ra names <<<"$APP_SERVICES"
+  for service in "${names[@]}"; do [[ -n "$service" ]] && SELECTED+=("$service"); done
+}
+prepare_git() {
+  local app="$1" url="$2" dir branch="$3" commit="$4" no_pull="$5" old="" target=""
+  dir="$(repo_dir "$app")"
+  if [[ ! -e "$dir" ]]; then
+    [[ "$no_pull" == true ]] && fail "'$app' checkout is missing and --no-pull prevents cloning. Clone it from $url first."
+    [[ -n "$url" ]] || fail "No verified Git origin for '$app'; clone/restore it manually and configure apps.tsv."
+    git clone --branch main -- "$url" "$dir"
+  elif [[ ! -d "$dir/.git" ]]; then fail "'$dir' exists but is not a Git checkout; refusing to overwrite it."; fi
+  old="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
+  if [[ "$no_pull" == true ]]; then [[ -n "$old" ]] || fail "'$app' is not a usable Git checkout"; return 0; fi
+  check_clean "$dir" "$app"
+  [[ -n "$branch" ]] || branch=main
+  git -C "$dir" fetch origin "$branch" || fail "Could not fetch '$branch' for '$app'."
+  if [[ -n "$commit" ]]; then
+    git -C "$dir" cat-file -e "$commit^{commit}" 2>/dev/null || fail "Commit '$commit' is not available in '$app'."
+    git -C "$dir" merge-base --is-ancestor "$commit" "origin/$branch" || fail "Commit '$commit' is not in branch '$branch' for '$app'."
+    target="$commit"
+  else target="origin/$branch"; fi
+  if git -C "$dir" show-ref --verify --quiet "refs/heads/$branch"; then
+    local branch_tip
+    branch_tip="$(git -C "$dir" rev-parse "refs/heads/$branch")"
+    git -C "$dir" merge-base --is-ancestor "$branch_tip" "$target" || fail "'$app' branch '$branch' contains local commits outside the requested revision; preserve them before switching."
+  fi
+  git -C "$dir" switch --force-create "$branch" "$target" >/dev/null
+  [[ -n "$commit" ]] && git -C "$dir" checkout --detach "$commit" >/dev/null
+  [[ -z "$old" || "$old" == "$(git -C "$dir" rev-parse HEAD)" ]] || info "$app: $(git -C "$dir" rev-parse --short HEAD)"
+}
+
+up() {
+  local env="$1" app_filter="${2:-}" no_pull="$3" branch="$4" commit="$5" app url services domains required dir old sha id= status=success failed=0
+  ENVIRONMENT="$env"; check_prerequisites; [[ -f "$ENVFILE" ]] || { [[ -f "$ROOT/.env.example" ]] || fail "Missing Olympus .env.example"; cp -- "$ROOT/.env.example" "$ENVFILE"; chmod 600 "$ENVFILE"; info "Created olympus/.env from .env.example; configure its database credentials."; }
+  validate_olympus_env
+  copy_workspace_readme
+  ensure_dev_hosts
+  SELECTED=(); local -a chosen=()
+  if [[ -n "$app_filter" ]]; then chosen=("$app_filter"); else mapfile -t chosen < <(apps); fi
+  local -a affected=()
+  declare -A previous_sha=() deployed_sha=()
+  for app in "${chosen[@]}"; do
+    read_app "$app" || fail "Unknown application '$app'."
+    [[ -n "$app_filter" || ( -z "$branch" && -z "$commit" ) ]] || fail "--branch and --commit require an individual application up."
+    dir="$(repo_dir "$app")"; old="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
+    prepare_git "$app" "$APP_URL" "$branch" "$commit" "$no_pull"
+    prepare_app_env "$app"
+    sha="$(git -C "$dir" rev-parse HEAD)"
+    previous_sha["$app"]="$old"; deployed_sha["$app"]="$sha"
+    compose_app_services "$app"; affected+=("$app:$old:$sha")
+  done
+  SELECTED+=(reverse-proxy)
+  compose_files
+  local -a cmd=("${COMPOSE[@]}" up -d --build)
+  cmd+=("${SELECTED[@]}")
+  id="$(record "$env" up "${app_filter:-all}" "" "" started)"
+  if ! "${cmd[@]}"; then status=failed; failed=1; fi
+  for app in "${chosen[@]}"; do record "$env" up "$app" "${previous_sha[$app]}" "${deployed_sha[$app]}" "$([[ $failed == 0 ]] && echo success || echo failed)" "deploy=$id" >/dev/null; done
+  [[ "$failed" == 0 ]] || fail "Deploy $id failed; no automatic rollback was attempted. Inspect docker compose logs."
+  info "Deploy $id completed for ${chosen[*]}"
+}
+rollback() {
+  local env="$1" app="$2" requested="$3" url services domains required dir current target
+  ENVIRONMENT="$env"; check_prerequisites; read_app "$app" || fail "Unknown application '$app'."
+  dir="$(repo_dir "$app")"; [[ -d "$dir/.git" ]] || fail "Missing checkout for '$app'."
+  check_clean "$dir" "$app"; current="$(git -C "$dir" rev-parse HEAD)"
+  target="$requested"; [[ -n "$target" ]] || target="$(previous_deployment "$env" "$app" "$current")"
+  [[ -n "$target" ]] || fail "No earlier successful deployment is recorded for '$app'."
+  git -C "$dir" cat-file -e "$target^{commit}" 2>/dev/null || fail "Commit '$target' is not available locally; fetch it before rollback."
+  git -C "$dir" checkout --detach "$target" >/dev/null
+  prepare_app_env "$app"; compose_app_services "$app"; compose_files
+  local id; id="$(record "$env" rollback "$app" "$current" "$target" started)"
+  if ! "${COMPOSE[@]}" up -d --build "${SELECTED[@]}"; then record "$env" rollback "$app" "$current" "$target" failed "deploy=$id" >/dev/null; fail "Rollback $id failed; no automatic recovery was attempted."; fi
+  record "$env" rollback "$app" "$current" "$target" success "deploy=$id" >/dev/null
+  info "Rollback $id completed: $app $current -> $target"
+}
+
+usage() { cat <<'EOF'
+Usage:
+  olymctl dev|prod up [app] [--no-pull] [--branch NAME] [--commit SHA]
+  olymctl dev|prod rollback app [--commit SHA]
+  olymctl dev|prod down [app]
+  olymctl history
+EOF
+}
+main() {
+  [[ $# -ge 1 ]] || { usage; exit 2; }
+  if [[ "$1" == history ]]; then [[ -f "$HISTORY" ]] && cat "$HISTORY" || info "No deploy history yet."; return; fi
+  local env="$1" action="${2:-}" app="" no_pull=false branch="" commit=""; shift 2 || true
+  [[ "$env" == dev || "$env" == prod ]] || { usage; exit 2; }
+  case "$action" in
+    up)
+      if [[ $# -gt 0 && "$1" != --* ]]; then app="$1"; shift; fi
+      while (($#)); do case "$1" in --no-pull) no_pull=true;; --branch) (($#>=2)) || fail "--branch needs a value"; branch="$2"; shift;; --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; *) fail "Unknown up option: $1";; esac; shift; done
+      [[ -z "$branch$commit" || -n "$app" ]] || fail "--branch and --commit apply only to individual application up."
+      up "$env" "$app" "$no_pull" "$branch" "$commit";;
+    rollback)
+      [[ $# -ge 1 ]] || fail "rollback needs an application"; app="$1"; shift
+      while (($#)); do case "$1" in --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; *) fail "Unknown rollback option: $1";; esac; shift; done
+      rollback "$env" "$app" "$commit";;
+    down)
+      check_prerequisites; ENVIRONMENT="$env"; compose_files
+      if [[ $# -gt 0 ]]; then read_app "$1" || fail "Unknown app '$1'"; SELECTED=(); compose_app_services "$1"; "${COMPOSE[@]}" stop "${SELECTED[@]}"; else "${COMPOSE[@]}" stop; fi;;
+    *) usage; exit 2;;
+  esac
+}
+main "$@"

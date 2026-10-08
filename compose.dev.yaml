@@ -1,0 +1,7 @@
+services:
+  reverse-proxy:
+    environment:
+      CADDY_ENVIRONMENT: development
+      DOMAIN_SUFFIX: local
+    volumes:
+      - ../reverse-proxy/Caddyfile:/etc/caddy/Caddyfile:ro

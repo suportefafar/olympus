@@ -1,0 +1,5 @@
+services:
+  reverse-proxy:
+    environment:
+      CADDY_ENVIRONMENT: production
+      DOMAIN_SUFFIX: ufmg.br
