@@ -65,6 +65,8 @@ services:
     volumes: !reset []
 
   cronos:
+    ports:
+      - "10.10.10.1:123:123/udp"
     environment:
       ALLOWED_NETWORKS: ${CRONOS_ALLOWED_NETWORKS:?Set CRONOS_ALLOWED_NETWORKS in olympus/.env}
 
