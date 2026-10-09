@@ -178,10 +178,25 @@ validate_olympus_env() {
   done
 }
 
-check_prerequisites() {
-  need git; need docker; need curl
+check_docker() {
+  need docker
   docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 plugin is required."
   docker info >/dev/null 2>&1 || fail "Docker daemon unavailable (check service and permissions)."
+}
+check_prerequisites() { need git; need curl; check_docker; }
+state_label() {
+  case "$1" in
+    created) printf 'criado';; restarting) printf 'reiniciando' ;; running) printf 'rodando' ;;
+    removing) printf 'removendo' ;; paused) printf 'pausado' ;; exited) printf 'parado' ;;
+    dead) printf 'encerrado com erro' ;; *) printf '%s' "$1" ;;
+  esac
+}
+health_label() {
+  case "$1" in
+    healthy) printf 'saudável' ;; unhealthy) printf 'não saudável' ;;
+    starting) printf 'verificando' ;; 'sem healthcheck') printf 'sem healthcheck' ;;
+    *) printf '%s' "$1" ;;
+  esac
 }
 check_clean() {
   local dir="$1" label="$2" branch upstream tip
@@ -289,10 +304,73 @@ rollback() {
   info "Rollback $id completed: $app $current -> $target"
 }
 
+status() {
+  local env="$1" id details name state health cpu mem memory_pct net_io block_io pid timestamp container_ids stats_output
+  local -a ids=() running_ids=() names=()
+  local -A states=() healths=() cpus=() memories=() memory_pcts=() net_ios=() block_ios=() pids=()
+  ENVIRONMENT="$env"; check_docker; compose_files
+  container_ids="$("${COMPOSE[@]}" ps -a -q)" || fail "Could not list $env containers."
+  [[ -z "$container_ids" ]] || mapfile -t ids <<<"$container_ids"
+  if ((${#ids[@]} == 0)); then info "No containers found for $env."; return 0; fi
+  for id in "${ids[@]}"; do
+    details="$(docker inspect --format '{{.Name}}|{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}sem healthcheck{{end}}' "$id")"
+    IFS='|' read -r name state health <<<"$details"
+    name="${name#/}"
+    names+=("$name")
+    states["$name"]="$(state_label "$state")"
+    healths["$name"]="$(health_label "$health")"
+    [[ "$state" != running ]] || running_ids+=("$id")
+  done
+  if ((${#running_ids[@]})); then
+    stats_output="$(docker stats --no-stream --format '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}' "${running_ids[@]}")" || fail "Could not collect container resource statistics."
+    while IFS='|' read -r name cpu mem memory_pct net_io block_io pid; do
+      [[ -n "$name" ]] || continue
+      name="${name#/}"
+      cpus["$name"]="$cpu"
+      memories["$name"]="$mem"
+      memory_pcts["$name"]="$memory_pct"
+      net_ios["$name"]="$net_io"
+      block_ios["$name"]="$block_io"
+      pids["$name"]="$pid"
+    done <<<"$stats_output"
+  fi
+  timestamp="$(date '+%Y-%m-%d %H:%M:%S %Z')"
+  printf 'Snapshot %s | ambiente: %s\n' "$timestamp" "$env"
+  printf 'I/O de rede e disco são acumulados desde o início do container.\n\n'
+  printf '| Container | Estado | Saúde | CPU | RAM (uso / limite) | RAM %% | NET I/O (RX / TX) | DISK I/O (leitura / escrita) | PIDs |\n'
+  printf '|---|---|---|---:|---:|---:|---:|---:|---:|\n'
+  for name in "${names[@]}"; do
+    printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
+      "$name" "${states[$name]}" "${healths[$name]}" "${cpus[$name]:-—}" \
+      "${memories[$name]:-—}" "${memory_pcts[$name]:-—}" "${net_ios[$name]:-—}" \
+      "${block_ios[$name]:-—}" "${pids[$name]:-—}"
+  done
+}
+
+ports() {
+  local env="$1" id container_ids
+  local -a ids=()
+  ENVIRONMENT="$env"; check_docker; compose_files
+  container_ids="$("${COMPOSE[@]}" ps -a -q)" || fail "Could not list $env containers."
+  [[ -z "$container_ids" ]] || mapfile -t ids <<<"$container_ids"
+  if ((${#ids[@]} == 0)); then info "No containers found for $env."; return 0; fi
+  printf 'Ambiente: %s\n' "$env"
+  printf 'Portas internas são as declaradas pela imagem/configuração; publicação indica host → container.\n\n'
+  for id in "${ids[@]}"; do
+    docker inspect --format='Container: {{.Name}}
+  Estado: {{if eq .State.Status "running"}}rodando{{else if eq .State.Status "exited"}}parado{{else if eq .State.Status "restarting"}}reiniciando{{else if eq .State.Status "paused"}}pausado{{else}}{{.State.Status}}{{end}}
+  Portas internas declaradas: {{range $port, $config := .Config.ExposedPorts}}{{$port}} {{else}}nenhuma{{end}}
+  Portas publicadas: {{range $port, $bindings := .NetworkSettings.Ports}}{{if $bindings}}{{range $bindings}}{{.HostIp}}:{{.HostPort}} → {{$port}} {{end}}{{else}}{{$port}} (somente rede Docker) {{end}}{{else}}nenhuma{{end}}' "$id"
+    printf '\n'
+  done
+}
+
 usage() { cat <<'EOF'
 Usage:
   olymctl dev|prod up [app] [--no-pull] [--branch NAME] [--commit SHA] [--remote]
   olymctl dev|prod rollback app [--commit SHA] [--remote]
+  olymctl dev|prod status [--remote]
+  olymctl dev|prod ports [--remote]
   olymctl dev|prod down [app]
   olymctl history
 EOF
@@ -328,6 +406,16 @@ main() {
         run_remote_prod rollback "${remote_args[@]}"
       else
         rollback "$env" "$app" "$commit"
+      fi;;
+    status|ports)
+      while (($#)); do case "$1" in --remote) remote=true;; *) fail "Unknown $action option: $1";; esac; shift; done
+      if [[ "$remote" == true ]]; then
+        [[ "$env" == prod ]] || fail "--remote is supported only with prod $action."
+        run_remote_prod "$action"
+      elif [[ "$action" == status ]]; then
+        status "$env"
+      else
+        ports "$env"
       fi;;
     down)
       check_prerequisites; ENVIRONMENT="$env"; compose_files

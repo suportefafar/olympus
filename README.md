@@ -10,6 +10,8 @@ Olympus is the portable Docker Compose orchestrator for FAFAR services. Its work
 ./olymctl prod rollback APP [--commit SHA]
 ./olymctl prod up [app] [--no-pull] [--remote]
 ./olymctl prod rollback APP [--commit SHA] --remote
+./olymctl dev|prod status [--remote]
+./olymctl dev|prod ports [--remote]
 ./olymctl history
 ./olymctl down dev|prod [app]
 ```
@@ -24,14 +26,19 @@ Host olympus-prod
   IdentityFile ~/.ssh/<private-key>
 ```
 
-The remote VM must have `olymctl` available on `PATH` (install it once from the server checkout with `sudo ./scripts/install-path.sh`). Then `--remote` forwards production `up` and `rollback` to that VM; without the flag, those commands run on the current host.
+The remote VM must have `olymctl` available on `PATH` (install it once from the server checkout with `sudo ./scripts/install-path.sh`). Then `--remote` forwards production `up`, `rollback`, `status`, and `ports` to that VM; without the flag, commands run on the current host. `status` and `ports` work with either `dev` or `prod`; remote inspection currently targets production.
 
 ```sh
 olymctl prod up --remote
 olymctl prod up escuta --no-pull --remote
 olymctl prod rollback escuta --remote
 olymctl prod rollback escuta --commit abc1234 --remote
+olymctl dev status
+olymctl prod status --remote
+olymctl prod ports --remote
 ```
+
+`status` prints a one-time container snapshot with CPU and RAM usage, health, state, network I/O, and block I/O. Network and block I/O are cumulative since each container started; stopped containers have no live resource sample. `ports` lists ports declared inside each container and host-to-container port mappings. A declared internal port does not prove that an application is listening on it.
 
 The first `up` prepares missing checkouts from `apps.tsv`, creates `.env` only from a repository's `.env.example`, copies `README.workspace.md` to the workspace root, and then starts the selected Compose services. Missing or placeholder settings stop startup for the affected app.
 
