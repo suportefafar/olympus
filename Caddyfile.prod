@@ -2,59 +2,107 @@
     tls /etc/ssl/certs/farmacia/farmacia.ufmg.br.crt /etc/ssl/certs/farmacia/farmacia.ufmg.br.key
 }
 
+(securityHeaders) {
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+}
+
+(siteLogs) {
+    log {
+        output file /var/log/caddy/{args[0]}.json {
+            roll_size 100MiB
+            roll_interval 24h
+            roll_keep 30
+            roll_keep_for 720h
+        }
+        format json
+    }
+}
+
 farmacia.ufmg.br, www.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs farmacia
     redir /Intranet https://intranet.farmacia.ufmg.br 301
     reverse_proxy institutional-website:80
 }
 
 intranet.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs intranet
     reverse_proxy intranet-website:80
 }
 
 escuta.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs escuta
     reverse_proxy escuta-website:80
 }
 
 escuta-wp.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs escuta-wp
     reverse_proxy escuta-website-wp:80
 }
 
 stagemanager.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs stagemanager
     reverse_proxy stagemanager:80
 }
 
 laras2026.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs laras2026
     reverse_proxy laras2026-website:80
 }
 
 design-system.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs design-system
+    @notAllowed not remote_ip 150.164.110.0/24 150.164.111.0/24
+    respond @notAllowed 403
     reverse_proxy design-system:80
 }
 
 chatrapido.farmacia.ufmg.br, c.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs chatrapido
     reverse_proxy chatrapido:80
 }
 
 hermes.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs hermes
+    @notAllowed not remote_ip 150.164.110.0/24 150.164.111.0/24
+    respond @notAllowed 403
     reverse_proxy hermes:80
 }
 
 nova-escuta.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs nova-escuta
     redir https://escuta.farmacia.ufmg.br{uri} permanent
 }
 
 cronos.farmacia.ufmg.br {
     import tlsConfig
+    import securityHeaders
+    import siteLogs cronos
     @notAllowed not remote_ip 150.164.110.0/24 150.164.111.0/24 192.168.137.0/24
     respond @notAllowed 403
     reverse_proxy cronos:8080

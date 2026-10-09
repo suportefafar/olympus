@@ -9,6 +9,14 @@ The local development command must register only `*.farmacia.local` in `/etc/hos
 
 The active production proxy was compared with the previous production Caddyfile and validates successfully on the VM. Its host routes point at services on the shared Docker edge network. Dike is an internal service and intentionally has no hostname in either environment.
 
+## Production access controls and logs
+
+The production Caddyfile is configured to allow `hermes.farmacia.ufmg.br` and `design-system.farmacia.ufmg.br` only from `150.164.110.0/24` and `150.164.111.0/24`; Caddy returns HTTP 403 to other source addresses. This uses the direct peer address seen by Caddy. If a load balancer or another reverse proxy is added in front, configure and restrict Caddy's trusted proxies before relying on client IP allowlists.
+
+The production Caddyfile applies HSTS, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy` to each published site. CSP is intentionally left to each application because a global policy can break application assets and integrations. The HSTS policy does not include `includeSubDomains`, so it does not impose HTTPS on unrelated subdomains.
+
+Caddy access logs are JSON, stored in the persistent Docker volume `caddy-logs` and split into one file per hostname under `/var/log/caddy` in the proxy container. Each file rotates daily or at 100 MiB; Caddy keeps at most 30 rotated files and removes files older than 30 days. The file-count limit can shorten retention if traffic produces more than 30 rotations in a month. These are proxy access logs; application and container output remains available through Docker's logging driver.
+
 `reverse-proxy/Caddyfile` is the legacy single-file configuration driven by `CADDY_ENVIRONMENT` and `DOMAIN_SUFFIX`. Olympus uses the explicit per-environment files above so local development TLS and the installed production certificate cannot be mixed by an environment variable.
 
 ## Ports exposed in development

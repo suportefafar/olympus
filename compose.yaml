@@ -94,6 +94,7 @@ services:
     volumes:
       - caddy-data:/data
       - caddy-config:/config
+      - caddy-logs:/var/log/caddy
     restart: unless-stopped
     networks: [edge]
 
@@ -106,3 +107,4 @@ volumes:
   mongo-data:
   caddy-data:
   caddy-config:
+  caddy-logs:
