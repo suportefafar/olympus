@@ -22,17 +22,17 @@ olymctl history
 olymctl down dev|prod [app]
 ```
 
-The remote production endpoint is currently hardcoded in `olymctl` as `150.164.110.1:10022`. Configure the SSH user and key locally, matching that host in `~/.ssh/config`:
+The remote production endpoint is currently hardcoded in `olymctl` as `root@150.164.110.1:10022`. Configure the SSH key locally, matching that host in `~/.ssh/config`:
 
 ```sshconfig
 Host 150.164.110.1
-  User <ssh-user>
+  User root
   IdentityFile ~/.ssh/<private-key>
 ```
 
 The remote VM must have `olymctl` available on `PATH` (install it once from the server checkout with `sudo ./scripts/install-path.sh`). `status` and `ports` work for both `dev` and `prod` locally. Remote execution currently targets only production; `dev --remote` is not configured yet.
 
-The CLI does not yet have a command to define remote environments. Adding remote environment configuration is a later step; for now the production host and port stay hardcoded in the script, while SSH user and key remain in the operator's SSH config.
+The CLI does not yet have a command to define remote environments. Adding remote environment configuration is a later step; for now the production user, host, and port stay hardcoded in the script, while the SSH key remains in the operator's SSH config.
 
 ```sh
 olymctl prod --remote up

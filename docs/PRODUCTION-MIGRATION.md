@@ -38,7 +38,7 @@ cd /opt/fafar/olympus
 
 O comando conserva o override local. As credenciais reais permanecem nos arquivos privados do servidor; nunca copiar `.env` de desenvolvimento sobre eles. Preservar as chaves Rails e Hermes vinculadas aos dados restaurados.
 
-Para disparar operações de outra máquina, configure usuário e chave SSH localmente para `150.164.110.1`; o `olymctl` já fixa esse IP e a porta `10022`. Deixe `olymctl` disponível no `PATH` da sessão SSH no servidor. O histórico, os builds e as leituras de containers continuam no servidor:
+Para disparar operações de outra máquina, configure a chave SSH para `root@150.164.110.1`; o `olymctl` já fixa esse usuário, o IP e a porta `10022`. Deixe `olymctl` disponível no `PATH` da sessão SSH no servidor. O histórico, os builds e as leituras de containers continuam no servidor:
 
 ```sh
 olymctl prod --remote up

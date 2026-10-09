@@ -19,6 +19,7 @@ LOCK="$STATE/lock"
 ENVFILE="$ROOT/.env"
 REMOTE_PROD_SSH_HOST="150.164.110.1"
 REMOTE_PROD_SSH_PORT="10022"
+REMOTE_PROD_SSH_USER="root"
 
 fail() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 info() { printf '[INFO] %s\n' "$*"; }
@@ -36,8 +37,8 @@ run_remote_prod() {
     quoted="$(shell_quote "$arg")"
     command+=" $quoted"
   done
-  info "Running olymctl prod $action on $REMOTE_PROD_SSH_HOST:$REMOTE_PROD_SSH_PORT"
-  ssh -T -p "$REMOTE_PROD_SSH_PORT" "$REMOTE_PROD_SSH_HOST" "$command"
+  info "Running olymctl prod $action on $REMOTE_PROD_SSH_USER@$REMOTE_PROD_SSH_HOST:$REMOTE_PROD_SSH_PORT"
+  ssh -T -p "$REMOTE_PROD_SSH_PORT" "$REMOTE_PROD_SSH_USER@$REMOTE_PROD_SSH_HOST" "$command"
 }
 compose_files() {
   COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENVFILE" -f "$ROOT/compose.yaml")
