@@ -46,9 +46,11 @@ apps() { awk -F '\t' 'NF>=4 && $1 !~ /^#/ {print $1}' "$MANIFEST"; }
 repo_dir() { printf '%s/%s' "$WORKSPACE" "$1"; }
 
 copy_workspace_readme() {
-  local source="$ROOT/README.workspace.md" target="$WORKSPACE/README.md" tmp
+  local source="$ROOT/README.workspace.md" source_dir target tmp
+  source_dir="$(dirname -- "$source")"
+  target="$(cd -- "$source_dir/.." && pwd -P)/README.md"
   if [[ ! -f "$source" ]]; then info "README source is missing; leaving workspace README untouched."; return 0; fi
-  tmp="$(mktemp "$WORKSPACE/.README.md.XXXXXX")"
+  tmp="$(mktemp "$(dirname -- "$target")/.README.md.XXXXXX")"
   cp -- "$source" "$tmp"
   mv -f -- "$tmp" "$target"
   info "Published workspace README from olympus/README.workspace.md"
