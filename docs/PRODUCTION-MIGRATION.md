@@ -64,3 +64,6 @@ Registros detalhados ficam em `/var/backups/olympus-migration`: `count-compariso
 - Incluir no backup regular os volumes dos bancos, uploads/storage, imagens/PDFs Laras, certificados e arquivos privados de configuração. Os dumps da migração são um ponto de recuperação, não um agendamento de backups.
 - Preservar no LXC antigo os aproximadamente 58 GB de backups históricos WordPress até definir sua retenção.
 - As duas views MySQL inválidas descritas acima continuam pendentes de revisão de suas dependências na aplicação legada.
+
+- Configurar uma credencial de leitura Git para os repositórios privados `escuta-website`, `temis` e `prometheus-bot` antes de executar atualizações sem `--no-pull`. O deploy atual usa checkouts locais completos e não depende desse acesso.
+- Confirmar UDP/123 a partir de um cliente real das redes permitidas. O protocolo foi validado pela rede Docker; a tentativa pelo IP público a partir do LXC antigo expirou (o acesso HTTPS por esse mesmo caminho também falhou). A publicação da porta na VM está ativa; o encaminhamento externo depende da rede de produção.
