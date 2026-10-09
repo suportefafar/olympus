@@ -1,0 +1,102 @@
+(devTls) {
+    tls internal
+}
+
+http://farmacia.local, http://www.farmacia.local {
+    reverse_proxy institutional-website:80
+}
+
+https://farmacia.local, https://www.farmacia.local {
+    import devTls
+    reverse_proxy institutional-website:80
+}
+
+http://intranet.farmacia.local {
+    reverse_proxy intranet-website:80
+}
+
+https://intranet.farmacia.local {
+    import devTls
+    reverse_proxy intranet-website:80
+}
+
+http://escuta.farmacia.local, http://nova-escuta.farmacia.local {
+    reverse_proxy escuta-website:80
+}
+
+https://escuta.farmacia.local, https://nova-escuta.farmacia.local {
+    import devTls
+    reverse_proxy escuta-website:80
+}
+
+http://escuta-wp.farmacia.local {
+    reverse_proxy escuta-website-wp:80
+}
+
+https://escuta-wp.farmacia.local {
+    import devTls
+    reverse_proxy escuta-website-wp:80
+}
+
+http://hermes.farmacia.local {
+    reverse_proxy hermes:80
+}
+
+https://hermes.farmacia.local {
+    import devTls
+    reverse_proxy hermes:80
+}
+
+http://chatrapido.farmacia.local {
+    reverse_proxy chatrapido:80
+}
+
+https://chatrapido.farmacia.local {
+    import devTls
+    reverse_proxy chatrapido:80
+}
+
+http://stagemanager.farmacia.local {
+    reverse_proxy stagemanager:80
+}
+
+https://stagemanager.farmacia.local {
+    import devTls
+    reverse_proxy stagemanager:80
+}
+
+http://dike.farmacia.local {
+    reverse_proxy dike:3002
+}
+
+https://dike.farmacia.local {
+    import devTls
+    reverse_proxy dike:3002
+}
+
+http://design-system.farmacia.local {
+    reverse_proxy design-system:80
+}
+
+https://design-system.farmacia.local {
+    import devTls
+    reverse_proxy design-system:80
+}
+
+http://laras2026.farmacia.local {
+    reverse_proxy laras2026-website:80
+}
+
+https://laras2026.farmacia.local {
+    import devTls
+    reverse_proxy laras2026-website:80
+}
+
+http://cronos.farmacia.local {
+    reverse_proxy cronos:8080
+}
+
+https://cronos.farmacia.local {
+    import devTls
+    reverse_proxy cronos:8080
+}

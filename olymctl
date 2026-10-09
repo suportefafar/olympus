@@ -91,14 +91,17 @@ ensure_dev_hosts() {
   [[ "$ENVIRONMENT" == dev ]] || return 0
   local domains host line add=()
   while IFS=$'\t' read -r name url services domains required || [[ -n "${name:-}" ]]; do
-    [[ -z "${name:-}" || "$name" == \#* || -z "${domains:-}" ]] && continue
+    [[ -z "${name:-}" || "$name" == \#* || -z "${domains:-}" || "$domains" == "-" ]] && continue
     IFS=',' read -ra domain_list <<<"$domains"
     for host in "${domain_list[@]}"; do
       if ! awk -v h="$host" 'BEGIN{found=0} /^[[:space:]]*#/ {next} {for(i=2;i<=NF;i++) if ($i==h) found=1} END{exit !found}' /etc/hosts; then add+=("127.0.0.1 $host # olympus-managed"); fi
     done
   done < "$MANIFEST"
   ((${#add[@]})) || return 0
-  command -v sudo >/dev/null 2>&1 || fail "Development hostnames need /etc/hosts updates; install sudo or add these entries as an administrator: ${add[*]}"
+  if ! command -v sudo >/dev/null 2>&1 || ! sudo -n true 2>/dev/null; then
+    info "Could not update /etc/hosts without an interactive sudo session; add these entries as an administrator: ${add[*]}"
+    return 0
+  fi
   printf '%s\n' "${add[@]}" | sudo tee -a /etc/hosts >/dev/null || fail "Could not update /etc/hosts; no hostnames were claimed as configured."
 }
 
