@@ -8,8 +8,29 @@ Olympus is the portable Docker Compose orchestrator for FAFAR services. Its work
 ./olymctl dev up [app] [--no-pull] [--branch NAME] [--commit SHA]
 ./olymctl prod up [app] [--no-pull] [--branch NAME] [--commit SHA]
 ./olymctl prod rollback APP [--commit SHA]
+./olymctl prod up [app] [--no-pull] [--remote]
+./olymctl prod rollback APP [--commit SHA] --remote
 ./olymctl history
 ./olymctl down dev|prod [app]
+```
+
+Add an `olympus-prod` host alias to the operator's `~/.ssh/config` for remote production commands. Set its `HostName`, `User`, port (`10022` for the production VM), and SSH key there. For example:
+
+```sshconfig
+Host olympus-prod
+  HostName 150.164.110.1
+  User <ssh-user>
+  Port 10022
+  IdentityFile ~/.ssh/<private-key>
+```
+
+The remote VM must have `olymctl` available on `PATH` (install it once from the server checkout with `sudo ./scripts/install-path.sh`). Then `--remote` forwards production `up` and `rollback` to that VM; without the flag, those commands run on the current host.
+
+```sh
+olymctl prod up --remote
+olymctl prod up escuta --no-pull --remote
+olymctl prod rollback escuta --remote
+olymctl prod rollback escuta --commit abc1234 --remote
 ```
 
 The first `up` prepares missing checkouts from `apps.tsv`, creates `.env` only from a repository's `.env.example`, copies `README.workspace.md` to the workspace root, and then starts the selected Compose services. Missing or placeholder settings stop startup for the affected app.

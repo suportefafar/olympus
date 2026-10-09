@@ -17,10 +17,27 @@ STATE="$ROOT/state"
 HISTORY="$STATE/events.tsv"
 LOCK="$STATE/lock"
 ENVFILE="$ROOT/.env"
+REMOTE_PROD_SSH_ALIAS="olympus-prod"
 
 fail() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 info() { printf '[INFO] %s\n' "$*"; }
 need() { command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"; }
+shell_quote() {
+  local value=${1//\'/\'\\\'\'}
+  printf "'%s'" "$value"
+}
+run_remote_prod() {
+  local action="$1" arg command="olymctl prod" quoted
+  shift
+  need ssh
+  command+=" $(shell_quote "$action")"
+  for arg in "$@"; do
+    quoted="$(shell_quote "$arg")"
+    command+=" $quoted"
+  done
+  info "Running olymctl prod $action on SSH alias $REMOTE_PROD_SSH_ALIAS"
+  ssh -T "$REMOTE_PROD_SSH_ALIAS" "$command"
+}
 compose_files() {
   COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENVFILE" -f "$ROOT/compose.yaml")
   if [[ "$ENVIRONMENT" == dev ]]; then
@@ -274,8 +291,8 @@ rollback() {
 
 usage() { cat <<'EOF'
 Usage:
-  olymctl dev|prod up [app] [--no-pull] [--branch NAME] [--commit SHA]
-  olymctl dev|prod rollback app [--commit SHA]
+  olymctl dev|prod up [app] [--no-pull] [--branch NAME] [--commit SHA] [--remote]
+  olymctl dev|prod rollback app [--commit SHA] [--remote]
   olymctl dev|prod down [app]
   olymctl history
 EOF
@@ -283,18 +300,35 @@ EOF
 main() {
   [[ $# -ge 1 ]] || { usage; exit 2; }
   if [[ "$1" == history ]]; then [[ -f "$HISTORY" ]] && cat "$HISTORY" || info "No deploy history yet."; return; fi
-  local env="$1" action="${2:-}" app="" no_pull=false branch="" commit=""; shift 2 || true
+  local env="$1" action="${2:-}" app="" no_pull=false branch="" commit="" remote=false; shift 2 || true
   [[ "$env" == dev || "$env" == prod ]] || { usage; exit 2; }
   case "$action" in
     up)
       if [[ $# -gt 0 && "$1" != --* ]]; then app="$1"; shift; fi
-      while (($#)); do case "$1" in --no-pull) no_pull=true;; --branch) (($#>=2)) || fail "--branch needs a value"; branch="$2"; shift;; --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; *) fail "Unknown up option: $1";; esac; shift; done
+      while (($#)); do case "$1" in --no-pull) no_pull=true;; --branch) (($#>=2)) || fail "--branch needs a value"; branch="$2"; shift;; --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; --remote) remote=true;; *) fail "Unknown up option: $1";; esac; shift; done
       [[ -z "$branch$commit" || -n "$app" ]] || fail "--branch and --commit apply only to individual application up."
-      up "$env" "$app" "$no_pull" "$branch" "$commit";;
+      if [[ "$remote" == true ]]; then
+        [[ "$env" == prod ]] || fail "--remote is supported only with prod up."
+        local -a remote_args=()
+        [[ -z "$app" ]] || remote_args+=("$app")
+        [[ "$no_pull" == false ]] || remote_args+=(--no-pull)
+        [[ -z "$branch" ]] || remote_args+=(--branch "$branch")
+        [[ -z "$commit" ]] || remote_args+=(--commit "$commit")
+        run_remote_prod up "${remote_args[@]}"
+      else
+        up "$env" "$app" "$no_pull" "$branch" "$commit"
+      fi;;
     rollback)
       [[ $# -ge 1 ]] || fail "rollback needs an application"; app="$1"; shift
-      while (($#)); do case "$1" in --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; *) fail "Unknown rollback option: $1";; esac; shift; done
-      rollback "$env" "$app" "$commit";;
+      while (($#)); do case "$1" in --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; --remote) remote=true;; *) fail "Unknown rollback option: $1";; esac; shift; done
+      if [[ "$remote" == true ]]; then
+        [[ "$env" == prod ]] || fail "--remote is supported only with prod rollback."
+        local -a remote_args=("$app")
+        [[ -z "$commit" ]] || remote_args+=(--commit "$commit")
+        run_remote_prod rollback "${remote_args[@]}"
+      else
+        rollback "$env" "$app" "$commit"
+      fi;;
     down)
       check_prerequisites; ENVIRONMENT="$env"; compose_files
       if [[ $# -gt 0 ]]; then read_app "$1" || fail "Unknown app '$1'"; SELECTED=(); compose_app_services "$1"; "${COMPOSE[@]}" stop "${SELECTED[@]}"; else "${COMPOSE[@]}" stop; fi;;
