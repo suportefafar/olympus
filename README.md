@@ -4,38 +4,44 @@ Olympus is the portable Docker Compose orchestrator for FAFAR services. Its work
 
 ## Commands
 
+The CLI follows the shape `olymctl <ambiente> [--remote] <comando> [flags]`. An environment selects the Compose stack; `--remote` runs the command on that environment's configured remote host. The same remote modifier is also accepted after the command for compatibility.
+
 ```sh
-./olymctl dev up [app] [--no-pull] [--branch NAME] [--commit SHA]
-./olymctl prod up [app] [--no-pull] [--branch NAME] [--commit SHA]
-./olymctl prod rollback APP [--commit SHA]
-./olymctl prod up [app] [--no-pull] [--remote]
-./olymctl prod rollback APP [--commit SHA] --remote
-./olymctl dev|prod status [--remote]
-./olymctl dev|prod ports [--remote]
-./olymctl history
-./olymctl down dev|prod [app]
+olymctl dev up [app] [--no-pull] [--branch NAME] [--commit SHA]
+olymctl prod up [app] [--no-pull] [--branch NAME] [--commit SHA]
+olymctl prod rollback APP [--commit SHA]
+olymctl dev status
+olymctl prod status
+olymctl dev ports
+olymctl prod ports
+olymctl prod --remote up [app] [--no-pull]
+olymctl prod --remote rollback APP [--commit SHA]
+olymctl prod --remote status
+olymctl prod --remote ports
+olymctl history
+olymctl down dev|prod [app]
 ```
 
-Add an `olympus-prod` host alias to the operator's `~/.ssh/config` for remote production commands. Set its `HostName`, `User`, port (`10022` for the production VM), and SSH key there. For example:
+The remote production endpoint is currently hardcoded in `olymctl` as `150.164.110.1:10022`. Configure the SSH user and key locally, matching that host in `~/.ssh/config`:
 
 ```sshconfig
-Host olympus-prod
-  HostName 150.164.110.1
+Host 150.164.110.1
   User <ssh-user>
-  Port 10022
   IdentityFile ~/.ssh/<private-key>
 ```
 
-The remote VM must have `olymctl` available on `PATH` (install it once from the server checkout with `sudo ./scripts/install-path.sh`). Then `--remote` forwards production `up`, `rollback`, `status`, and `ports` to that VM; without the flag, commands run on the current host. `status` and `ports` work with either `dev` or `prod`; remote inspection currently targets production.
+The remote VM must have `olymctl` available on `PATH` (install it once from the server checkout with `sudo ./scripts/install-path.sh`). `status` and `ports` work for both `dev` and `prod` locally. Remote execution currently targets only production; `dev --remote` is not configured yet.
+
+The CLI does not yet have a command to define remote environments. Adding remote environment configuration is a later step; for now the production host and port stay hardcoded in the script, while SSH user and key remain in the operator's SSH config.
 
 ```sh
-olymctl prod up --remote
-olymctl prod up escuta --no-pull --remote
-olymctl prod rollback escuta --remote
-olymctl prod rollback escuta --commit abc1234 --remote
+olymctl prod --remote up
+olymctl prod --remote up escuta --no-pull
+olymctl prod --remote rollback escuta
+olymctl prod --remote rollback escuta --commit abc1234
 olymctl dev status
-olymctl prod status --remote
-olymctl prod ports --remote
+olymctl prod --remote status
+olymctl prod --remote ports
 ```
 
 `status` prints a one-time container snapshot with CPU and RAM usage, health, state, network I/O, and block I/O. Network and block I/O are cumulative since each container started; stopped containers have no live resource sample. `ports` lists ports declared inside each container and host-to-container port mappings. A declared internal port does not prove that an application is listening on it.

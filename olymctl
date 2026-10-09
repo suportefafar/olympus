@@ -17,7 +17,8 @@ STATE="$ROOT/state"
 HISTORY="$STATE/events.tsv"
 LOCK="$STATE/lock"
 ENVFILE="$ROOT/.env"
-REMOTE_PROD_SSH_ALIAS="olympus-prod"
+REMOTE_PROD_SSH_HOST="150.164.110.1"
+REMOTE_PROD_SSH_PORT="10022"
 
 fail() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 info() { printf '[INFO] %s\n' "$*"; }
@@ -35,8 +36,8 @@ run_remote_prod() {
     quoted="$(shell_quote "$arg")"
     command+=" $quoted"
   done
-  info "Running olymctl prod $action on SSH alias $REMOTE_PROD_SSH_ALIAS"
-  ssh -T "$REMOTE_PROD_SSH_ALIAS" "$command"
+  info "Running olymctl prod $action on $REMOTE_PROD_SSH_HOST:$REMOTE_PROD_SSH_PORT"
+  ssh -T -p "$REMOTE_PROD_SSH_PORT" "$REMOTE_PROD_SSH_HOST" "$command"
 }
 compose_files() {
   COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENVFILE" -f "$ROOT/compose.yaml")
@@ -367,10 +368,10 @@ ports() {
 
 usage() { cat <<'EOF'
 Usage:
-  olymctl dev|prod up [app] [--no-pull] [--branch NAME] [--commit SHA] [--remote]
-  olymctl dev|prod rollback app [--commit SHA] [--remote]
-  olymctl dev|prod status [--remote]
-  olymctl dev|prod ports [--remote]
+  olymctl dev|prod [--remote] up [app] [--no-pull] [--branch NAME] [--commit SHA]
+  olymctl dev|prod [--remote] rollback app [--commit SHA]
+  olymctl dev|prod [--remote] status
+  olymctl dev|prod [--remote] ports
   olymctl dev|prod down [app]
   olymctl history
 EOF
@@ -378,7 +379,11 @@ EOF
 main() {
   [[ $# -ge 1 ]] || { usage; exit 2; }
   if [[ "$1" == history ]]; then [[ -f "$HISTORY" ]] && cat "$HISTORY" || info "No deploy history yet."; return; fi
-  local env="$1" action="${2:-}" app="" no_pull=false branch="" commit="" remote=false; shift 2 || true
+  local env="$1" action="" app="" no_pull=false branch="" commit="" remote=false
+  shift
+  if [[ "${1:-}" == --remote ]]; then remote=true; shift; fi
+  action="${1:-}"
+  shift || true
   [[ "$env" == dev || "$env" == prod ]] || { usage; exit 2; }
   case "$action" in
     up)

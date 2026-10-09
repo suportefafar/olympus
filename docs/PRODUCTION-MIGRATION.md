@@ -38,14 +38,14 @@ cd /opt/fafar/olympus
 
 O comando conserva o override local. As credenciais reais permanecem nos arquivos privados do servidor; nunca copiar `.env` de desenvolvimento sobre eles. Preservar as chaves Rails e Hermes vinculadas aos dados restaurados.
 
-Para disparar operações de outra máquina, configure nela o alias SSH `olympus-prod` apontando para a VM e deixe `olymctl` disponível no `PATH` da sessão SSH no servidor. A CLI aceita `--remote` em `prod up`, `prod rollback`, `prod status` e `prod ports`; o histórico, os builds e as leituras de containers continuam no servidor:
+Para disparar operações de outra máquina, configure usuário e chave SSH localmente para `150.164.110.1`; o `olymctl` já fixa esse IP e a porta `10022`. Deixe `olymctl` disponível no `PATH` da sessão SSH no servidor. O histórico, os builds e as leituras de containers continuam no servidor:
 
 ```sh
-olymctl prod up --remote
-olymctl prod up escuta --no-pull --remote
-olymctl prod rollback escuta --remote
-olymctl prod status --remote
-olymctl prod ports --remote
+olymctl prod --remote up
+olymctl prod --remote up escuta --no-pull
+olymctl prod --remote rollback escuta
+olymctl prod --remote status
+olymctl prod --remote ports
 ```
 
 A configuração do proxy publica os serviços de produção do Olympus. Os antigos painéis administrativos, monitor externo e Escuta stage não são publicados por esse arquivo.
