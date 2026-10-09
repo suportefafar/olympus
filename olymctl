@@ -55,6 +55,7 @@ exec '
 compose_files() {
   COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENVFILE" -f "$ROOT/compose.yaml")
   if [[ "$ENVIRONMENT" == dev ]]; then
+    COMPOSE+=(--profile dev)
     COMPOSE+=(-f "$ROOT/compose.dev.yaml")
   fi
   if [[ "$ENVIRONMENT" == prod ]]; then
