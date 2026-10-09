@@ -10,3 +10,7 @@ The local development command must register only `*.farmacia.local` in `/etc/hos
 The active production proxy was compared with the previous production Caddyfile and validates successfully on the VM. Its host routes point at services on the shared Docker edge network. Dike is an internal service and intentionally has no hostname in either environment.
 
 `reverse-proxy/Caddyfile` is the legacy single-file configuration driven by `CADDY_ENVIRONMENT` and `DOMAIN_SUFFIX`. Olympus uses the explicit per-environment files above so local development TLS and the installed production certificate cannot be mixed by an environment variable.
+
+## Ports exposed in development
+
+The dev Compose override publishes only on loopback: Dike `3002`, PostgreSQL `5432`, MySQL `3306`, and MongoDB `27017`. They are reachable from tools on the development host without opening them to the LAN. Production Compose has no host port mappings for Dike or the databases; it keeps access on Docker networks only.

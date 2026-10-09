@@ -34,3 +34,5 @@ For a migration, restore logical dumps into fresh database storage before starti
 Migration status and server-specific operational notes: [production migration](docs/PRODUCTION-MIGRATION.md). Laras images and PDFs are not tracked by Git; restore its `images/` and `docs/` before building production.
 
 Development uses `Caddyfile.dev` and only `*.farmacia.local` host mappings. Production uses `Caddyfile.prod` and normal DNS for `*.farmacia.ufmg.br`. See [proxy domain setup](docs/PROXY-DOMAINS.md); never map production `.ufmg.br` hostnames to localhost when starting the dev environment.
+
+The dev override publishes Dike on `127.0.0.1:3002` and PostgreSQL/MySQL/MongoDB on `127.0.0.1:5432`, `:3306`, and `:27017`. Production does not publish these service ports.

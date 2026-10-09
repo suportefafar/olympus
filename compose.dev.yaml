@@ -1,4 +1,16 @@
 services:
+  postgres-db:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  mongo-db:
+    ports:
+      - "127.0.0.1:27017:27017"
+
+  dike:
+    ports:
+      - "127.0.0.1:3002:3002"
+
   hermes:
     # Dev does not need the in-process mail worker; keeping it disabled lets
     # the web process stay available while mail delivery remains mocked.
@@ -7,6 +19,8 @@ services:
 
   mysql-db:
     image: mysql:8.0
+    ports:
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_DATABASE: wordpress
       MYSQL_USER: ${MYSQL_USER:-local-wp}
