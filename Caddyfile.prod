@@ -1,0 +1,66 @@
+(tlsConfig) {
+    tls /etc/ssl/certs/farmacia/farmacia.ufmg.br.crt /etc/ssl/certs/farmacia/farmacia.ufmg.br.key
+}
+
+farmacia.ufmg.br, www.farmacia.ufmg.br {
+    import tlsConfig
+    redir /Intranet https://intranet.farmacia.ufmg.br 301
+    reverse_proxy institutional-website:80
+}
+
+intranet.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy intranet-website:80
+}
+
+escuta.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy escuta-website:80
+}
+
+escuta-wp.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy escuta-website-wp:80
+}
+
+stagemanager.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy stagemanager:80
+}
+
+laras2026.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy laras2026-website:80
+}
+
+design-system.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy design-system:80
+}
+
+chatrapido.farmacia.ufmg.br, c.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy chatrapido:80
+}
+
+hermes.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy hermes:80
+}
+
+dike.farmacia.ufmg.br {
+    import tlsConfig
+    reverse_proxy dike:3002
+}
+
+nova-escuta.farmacia.ufmg.br {
+    import tlsConfig
+    redir https://escuta.farmacia.ufmg.br{uri} permanent
+}
+
+cronos.farmacia.ufmg.br {
+    import tlsConfig
+    @notAllowed not remote_ip 150.164.110.0/24 150.164.111.0/24 192.168.137.0/24
+    respond @notAllowed 403
+    reverse_proxy cronos:8080
+}

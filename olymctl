@@ -28,6 +28,9 @@ compose_files() {
   fi
   if [[ "$ENVIRONMENT" == prod ]]; then
     COMPOSE+=(-f "$ROOT/compose.prod.yaml")
+    if [[ -f "$ROOT/compose.prod.local.yaml" ]]; then
+      COMPOSE+=(-f "$ROOT/compose.prod.local.yaml")
+    fi
   fi
 }
 read_app() {

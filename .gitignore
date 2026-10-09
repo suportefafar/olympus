@@ -2,3 +2,5 @@
 state/
 *.log
 *.tmp
+compose.prod.local.yaml
+production/

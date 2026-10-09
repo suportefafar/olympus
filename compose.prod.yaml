@@ -1,6 +1,7 @@
 services:
   mysql-db:
-    image: mysql:8.0
+    image: ${MYSQL_IMAGE:-mysql:8.0}
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: wordpress
       MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in olympus/.env}
@@ -12,6 +13,7 @@ services:
 
   institutional-website:
     image: wordpress:php8.3-apache
+    restart: unless-stopped
     depends_on: [mysql-db]
     environment:
       WORDPRESS_DB_HOST: mysql-db:3306
@@ -27,6 +29,7 @@ services:
 
   intranet-website:
     image: wordpress:php8.3-apache
+    restart: unless-stopped
     depends_on: [mysql-db]
     environment:
       WORDPRESS_DB_HOST: mysql-db:3306
@@ -42,6 +45,7 @@ services:
 
   escuta-website-wp:
     image: wordpress:php8.3-apache
+    restart: unless-stopped
     depends_on: [mysql-db]
     environment:
       WORDPRESS_DB_HOST: mysql-db:3306
@@ -55,9 +59,22 @@ services:
         target: /var/www/html
     networks: [backend, edge]
 
+  laras2026-website:
+    image: olympus-laras2026-website
+    build: {context: ../laras2026-website}
+    volumes: !reset []
+
   cronos:
     environment:
       ALLOWED_NETWORKS: ${CRONOS_ALLOWED_NETWORKS:?Set CRONOS_ALLOWED_NETWORKS in olympus/.env}
+
+  escuta-website:
+    volumes:
+      - ../escuta-website/storage:/rails/storage
+
+  hermes:
+    volumes:
+      - ../hermes/storage:/rails/storage
 
   reverse-proxy:
     environment:
@@ -68,6 +85,7 @@ services:
       - intranet-website
       - escuta-website-wp
     volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - type: bind
         source: ${TLS_CERTS_PATH:?Set TLS_CERTS_PATH in olympus/.env}
         target: /etc/ssl/certs/farmacia
