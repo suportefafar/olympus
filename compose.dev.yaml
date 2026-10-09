@@ -18,6 +18,9 @@ services:
       SOLID_QUEUE_IN_PUMA: ""
 
   intranet:
+    build:
+      args:
+        BUNDLE_WITHOUT_GROUPS: test
     environment:
       RAILS_ENV: development
       INTRANET_DATABASE_HOST: postgres-db
