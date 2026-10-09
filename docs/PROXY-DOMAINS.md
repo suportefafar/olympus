@@ -13,7 +13,7 @@ The active production proxy was compared with the previous production Caddyfile 
 
 The production Caddyfile is configured to allow `hermes.farmacia.ufmg.br` and `design-system.farmacia.ufmg.br` only from `150.164.110.0/24` and `150.164.111.0/24`; Caddy returns HTTP 403 to other source addresses. This uses the direct peer address seen by Caddy. If a load balancer or another reverse proxy is added in front, configure and restrict Caddy's trusted proxies before relying on client IP allowlists.
 
-`intranet-stage.farmacia.local` and `intranet-stage.farmacia.ufmg.br` route to the Rails service `intranet:80`. The existing `intranet.farmacia.*` hostname continues to route to the legacy WordPress service `intranet-website:80`.
+`intranet-stage.farmacia.local` routes to the Rails service `intranet:80` in development. The Rails service is not enabled in production. The existing `intranet.farmacia.ufmg.br` hostname continues to route to the legacy WordPress service `intranet-website:80`.
 
 The production Caddyfile applies HSTS, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy` to each published site. CSP is intentionally left to each application because a global policy can break application assets and integrations. The HSTS policy does not include `includeSubDomains`, so it does not impose HTTPS on unrelated subdomains.
 

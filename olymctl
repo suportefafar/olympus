@@ -65,15 +65,16 @@ compose_files() {
   fi
 }
 read_app() {
-  local requested="$1" line
-  APP_URL= APP_SERVICES= APP_DOMAINS= APP_ENV_REQUIRED=true
-  while IFS=$'\t' read -r name url services domains required || [[ -n "${name:-}" ]]; do
+  local requested="$1" line scope
+  APP_URL= APP_SERVICES= APP_DOMAINS= APP_ENV_REQUIRED=true APP_ENV_SCOPE=all
+  while IFS=$'\t' read -r name url services domains required scope || [[ -n "${name:-}" ]]; do
     [[ -z "${name:-}" || "$name" == \#* ]] && continue
-    if [[ "$name" == "$requested" ]]; then APP_URL="$url"; APP_SERVICES="$services"; APP_DOMAINS="$domains"; APP_ENV_REQUIRED="$required"; return 0; fi
+    if [[ "$name" == "$requested" ]]; then APP_URL="$url"; APP_SERVICES="$services"; APP_DOMAINS="$domains"; APP_ENV_REQUIRED="$required"; APP_ENV_SCOPE="${scope:-all}"; return 0; fi
   done < "$MANIFEST"
   return 1
 }
-apps() { awk -F '\t' 'NF>=4 && $1 !~ /^#/ {print $1}' "$MANIFEST"; }
+apps() { awk -F '\t' -v env="$ENVIRONMENT" 'NF>=4 && $1 !~ /^#/ && ($6=="" || $6=="all" || $6==env) {print $1}' "$MANIFEST"; }
+app_enabled_in_environment() { [[ "$APP_ENV_SCOPE" == all || "$APP_ENV_SCOPE" == "$ENVIRONMENT" ]]; }
 repo_dir() { printf '%s/%s' "$WORKSPACE" "$1"; }
 
 copy_workspace_readme() {
@@ -301,6 +302,7 @@ up() {
   declare -A previous_sha=() deployed_sha=()
   for app in "${chosen[@]}"; do
     read_app "$app" || fail "Unknown application '$app'."
+    app_enabled_in_environment || fail "'$app' is not enabled in $env."
     [[ -n "$app_filter" || ( -z "$branch" && -z "$commit" ) ]] || fail "--branch and --commit require an individual application up."
     dir="$(repo_dir "$app")"; old="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
     prepare_git "$app" "$APP_URL" "$branch" "$commit" "$no_pull"
@@ -321,7 +323,7 @@ up() {
 }
 rollback() {
   local env="$1" app="$2" requested="$3" url services domains required dir current target
-  ENVIRONMENT="$env"; check_prerequisites; read_app "$app" || fail "Unknown application '$app'."
+  ENVIRONMENT="$env"; check_prerequisites; read_app "$app" || fail "Unknown application '$app'."; app_enabled_in_environment || fail "'$app' is not enabled in $env."
   dir="$(repo_dir "$app")"; [[ -d "$dir/.git" ]] || fail "Missing checkout for '$app'."
   check_clean "$dir" "$app"; current="$(git -C "$dir" rev-parse HEAD)"
   target="$requested"; [[ -n "$target" ]] || target="$(previous_deployment "$env" "$app" "$current")"
@@ -400,6 +402,7 @@ usage() { cat <<'EOF'
 Usage:
   olymctl dev|prod [--remote] up [app] [--no-pull] [--branch NAME] [--commit SHA]
   olymctl dev|prod [--remote] rollback app [--commit SHA]
+  olymctl prod --remote down app
   olymctl dev|prod [--remote] status
   olymctl dev|prod [--remote] ports
   olymctl dev|prod down [app]
@@ -455,8 +458,17 @@ main() {
         ports "$env"
       fi;;
     down)
-      check_prerequisites; ENVIRONMENT="$env"; compose_files
-      if [[ $# -gt 0 ]]; then read_app "$1" || fail "Unknown app '$1'"; SELECTED=(); compose_app_services "$1"; "${COMPOSE[@]}" stop "${SELECTED[@]}"; else "${COMPOSE[@]}" stop; fi;;
+      app=""; remote=false
+      if [[ $# -gt 0 && "$1" != --* ]]; then app="$1"; shift; fi
+      while (($#)); do case "$1" in --remote) remote=true;; *) fail "Unknown down option: $1";; esac; shift; done
+      if [[ "$remote" == true ]]; then
+        [[ "$env" == prod ]] || fail "--remote is supported only with prod down."
+        [[ -n "$app" ]] || fail "Remote down requires an application name."
+        run_remote_prod down "$app"
+      else
+        check_prerequisites; ENVIRONMENT="$env"; compose_files
+        if [[ -n "$app" ]]; then read_app "$app" || fail "Unknown app '$app'"; SELECTED=(); compose_app_services "$app"; "${COMPOSE[@]}" stop "${SELECTED[@]}"; else "${COMPOSE[@]}" stop; fi
+      fi;;
     *) usage; exit 2;;
   esac
 }

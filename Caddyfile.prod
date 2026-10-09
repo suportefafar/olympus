@@ -39,13 +39,6 @@ intranet.farmacia.ufmg.br {
     reverse_proxy intranet-website:80
 }
 
-intranet-stage.farmacia.ufmg.br {
-    import tlsConfig
-    import securityHeaders
-    import siteLogs intranet-stage
-    reverse_proxy intranet:80
-}
-
 escuta.farmacia.ufmg.br {
     import tlsConfig
     import securityHeaders

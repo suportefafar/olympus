@@ -25,6 +25,7 @@ services:
 
   intranet:
     build: {context: ../intranet}
+    profiles: [dev]
     env_file: [../intranet/.env]
     depends_on: [postgres-db]
     restart: unless-stopped

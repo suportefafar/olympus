@@ -78,13 +78,6 @@ services:
     volumes:
       - ../hermes/storage:/rails/storage
 
-  intranet:
-    environment:
-      INTRANET_DATABASE_HOST: postgres-db
-      INTRANET_DATABASE_PORT: "5432"
-    volumes:
-      - ../intranet/storage:/rails/storage
-
   reverse-proxy:
     environment:
       CADDY_ENVIRONMENT: production
@@ -92,7 +85,6 @@ services:
     depends_on:
       - institutional-website
       - intranet-website
-      - intranet
       - escuta-website-wp
     volumes:
       - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro

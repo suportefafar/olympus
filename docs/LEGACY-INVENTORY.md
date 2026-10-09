@@ -6,7 +6,7 @@ Inspected source: `current-infra/services-infra` in the planning workspace, incl
 
 | Area | Evidence from the current tree | Olympus choice |
 | --- | --- | --- |
-| Main applications | Compose defines WordPress institutional/intranet, Rails intranet stage, Escuta, Chatrapido, Hermes, Stagemanager, Dike, Temis, Prometheus Bot, Design System, Laras 2026, Cronos | Separate services in the Olympus Compose file; Rails intranet stage is exposed as `intranet-stage.*`; the legacy `intranet.*` route remains WordPress |
+| Main applications | Compose defines WordPress institutional/intranet, development-only Rails intranet stage, Escuta, Chatrapido, Hermes, Stagemanager, Dike, Temis, Prometheus Bot, Design System, Laras 2026, Cronos | Separate services in the Olympus Compose file; Rails intranet stage is available only at `intranet-stage.farmacia.local`; the legacy production `intranet.farmacia.ufmg.br` route remains WordPress |
 | Proxy | Caddy routes domains to named app services; dev uses `.local`, production uses `farmacia.ufmg.br` subdomains | One Caddy service on the shared edge network; only 80/443 are published |
 | SQL data | The legacy tree has MySQL 5.7 and PostgreSQL 17 named-volume services; MySQL import scripts and PostgreSQL init scripts exist | PostgreSQL remains active and the overlays now provide MySQL plus the three WordPress services. Production still requires a tested MySQL backup/restore and database compatibility review; the old database volume remains untouched |
 | Mongo | MongoDB named volume; Prometheus Bot depends on it | Persistent named volume retained |
