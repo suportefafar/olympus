@@ -65,15 +65,6 @@ https://stagemanager.farmacia.local {
     reverse_proxy stagemanager:80
 }
 
-http://dike.farmacia.local {
-    reverse_proxy dike:3002
-}
-
-https://dike.farmacia.local {
-    import devTls
-    reverse_proxy dike:3002
-}
-
 http://design-system.farmacia.local {
     reverse_proxy design-system:80
 }

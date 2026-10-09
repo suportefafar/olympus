@@ -48,11 +48,6 @@ hermes.farmacia.ufmg.br {
     reverse_proxy hermes:80
 }
 
-dike.farmacia.ufmg.br {
-    import tlsConfig
-    reverse_proxy dike:3002
-}
-
 nova-escuta.farmacia.ufmg.br {
     import tlsConfig
     redir https://escuta.farmacia.ufmg.br{uri} permanent
