@@ -92,11 +92,50 @@ prepare_app_env() {
 }
 ensure_dev_hosts() {
   [[ "$ENVIRONMENT" == dev ]] || return 0
-  local domains host line add=()
+  local domains host line add=() cleanup_tmp backup stale
+
+  # Older Olympus versions mapped official production hostnames to localhost.
+  # Drop only those tool-managed aliases; keep all *.farmacia.local dev names.
+  cleanup_tmp="$(mktemp)"
+  awk '
+    $1 == "127.0.0.1" && /# olympus-managed/ {
+      kept = 0
+      line = "127.0.0.1"
+      for (i = 2; i <= NF && $i != "#"; i++) {
+        if ($i != "true" && $i !~ /\.farmacia\.ufmg\.br$/) {
+          line = line " " $i
+          kept++
+        }
+      }
+      if (kept) print line " # olympus-managed dev"
+      next
+    }
+    { print }
+  ' /etc/hosts > "$cleanup_tmp"
+  chmod 644 "$cleanup_tmp"
+  if ! cmp -s /etc/hosts "$cleanup_tmp"; then
+    backup="$(mktemp /tmp/olympus-hosts-backup.XXXXXX)"
+    cp -- /etc/hosts "$backup"
+    chmod 600 "$backup"
+    if [[ "$EUID" == 0 ]] || { command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; }; then
+      if [[ "$EUID" == 0 ]]; then
+        install -m 644 -- "$cleanup_tmp" /etc/hosts
+      else
+        sudo -n install -m 644 -- "$cleanup_tmp" /etc/hosts
+      fi
+      info "Removed stale development mappings for production domains; backup: $backup"
+    else
+      stale="$(awk '$1 == "127.0.0.1" && /# olympus-managed/ { for (i = 2; i <= NF && $i != "#"; i++) if ($i == "true" || $i ~ /\.farmacia\.ufmg\.br$/) printf "%s ", $i }' /etc/hosts)"
+      info "Development now uses only *.farmacia.local. Remove these stale production aliases from /etc/hosts as an administrator: $stale (backup: $backup)"
+    fi
+  fi
+  rm -f -- "$cleanup_tmp"
+
   while IFS=$'\t' read -r name url services domains required || [[ -n "${name:-}" ]]; do
     [[ -z "${name:-}" || "$name" == \#* || -z "${domains:-}" || "$domains" == "-" ]] && continue
     IFS=',' read -ra domain_list <<<"$domains"
     for host in "${domain_list[@]}"; do
+      [[ "$host" == *.local ]] || continue
       if ! awk -v h="$host" 'BEGIN{found=0} /^[[:space:]]*#/ {next} {for(i=2;i<=NF;i++) if ($i==h) found=1} END{exit !found}' /etc/hosts; then add+=("127.0.0.1 $host # olympus-managed"); fi
     done
   done < "$MANIFEST"
