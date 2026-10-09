@@ -23,6 +23,13 @@ services:
     restart: unless-stopped
     networks: [backend, edge]
 
+  intranet:
+    build: {context: ../intranet}
+    env_file: [../intranet/.env]
+    depends_on: [postgres-db]
+    restart: unless-stopped
+    networks: [backend, edge]
+
   escuta-website:
     build: {context: ../escuta-website}
     env_file: [../escuta-website/.env]

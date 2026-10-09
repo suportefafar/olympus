@@ -6,7 +6,7 @@ Inspected source: `current-infra/services-infra` in the planning workspace, incl
 
 | Area | Evidence from the current tree | Olympus choice |
 | --- | --- | --- |
-| Main applications | Compose defines WordPress institutional/intranet, Escuta, Chatrapido, Hermes, Stagemanager, Dike, Temis, Prometheus Bot, Design System, Laras 2026, Cronos | Separate services in the Olympus Compose file; no Stage environment is included |
+| Main applications | Compose defines WordPress institutional/intranet, Rails intranet stage, Escuta, Chatrapido, Hermes, Stagemanager, Dike, Temis, Prometheus Bot, Design System, Laras 2026, Cronos | Separate services in the Olympus Compose file; Rails intranet stage is exposed as `intranet-stage.*`; the legacy `intranet.*` route remains WordPress |
 | Proxy | Caddy routes domains to named app services; dev uses `.local`, production uses `farmacia.ufmg.br` subdomains | One Caddy service on the shared edge network; only 80/443 are published |
 | SQL data | The legacy tree has MySQL 5.7 and PostgreSQL 17 named-volume services; MySQL import scripts and PostgreSQL init scripts exist | PostgreSQL remains active and the overlays now provide MySQL plus the three WordPress services. Production still requires a tested MySQL backup/restore and database compatibility review; the old database volume remains untouched |
 | Mongo | MongoDB named volume; Prometheus Bot depends on it | Persistent named volume retained |
@@ -33,6 +33,6 @@ The legacy subdirectories had these configured origins when inspected: `intranet
 
 ## Pulled repository audit (2026-10-08)
 
-All verified application repositories listed in the active `apps.tsv` were cloned from or fast-forward-pulled from `main`. `intranet` was already at the current main commit but contains documentation, no application source, and no Dockerfile. No independent institutional app origin was available. The legacy plan states WordPress core/site files are not fully tracked, so those services are excluded from the build list until an operator supplies the deployable source and data migration.
+All verified application repositories listed in the active `apps.tsv` were cloned from or fast-forward-pulled from `main`. The Intranet Rails app is built from its repository and runs beside the WordPress legacy service; the legacy public hostname remains attached to WordPress. No independent institutional app origin was available. The legacy plan states WordPress core/site files are not fully tracked, so those services remain dependent on operator-supplied content and a planned data migration.
 
 The Rails and Node application repositories provide their own Dockerfiles. Escuta's existing env template is under `deploy/`; a root template was added for Olympus' sibling-repository contract. Hermes, ChatRapido, and Stagemanager lacked root templates; their new templates list runtime variables observed in app config. Dike, Design System, Laras 2026, Cronos, and the proxy have root templates noting defaults or the absence of app-specific settings. Local `.env` files are created with mode 0600 and are ignored; templates contain required-value markers only, never generated credentials.

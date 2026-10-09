@@ -20,6 +20,15 @@ https://intranet.farmacia.local {
     reverse_proxy intranet-website:80
 }
 
+http://intranet-stage.farmacia.local {
+    reverse_proxy intranet:80
+}
+
+https://intranet-stage.farmacia.local {
+    import devTls
+    reverse_proxy intranet:80
+}
+
 http://escuta.farmacia.local, http://nova-escuta.farmacia.local {
     reverse_proxy escuta-website:80
 }

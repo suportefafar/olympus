@@ -17,6 +17,18 @@ services:
     environment:
       SOLID_QUEUE_IN_PUMA: ""
 
+  intranet:
+    environment:
+      RAILS_ENV: development
+      INTRANET_DATABASE_HOST: postgres-db
+      INTRANET_DATABASE_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
+      INTRANET_PUBLIC_BASE_URL: http://intranet-stage.farmacia.local
+      HERMES_API_URL: http://hermes:80
+    volumes:
+      - ../intranet/storage:/rails/storage
+
   mysql-db:
     image: mysql:8.0
     ports:
@@ -129,6 +141,7 @@ services:
     depends_on:
       - institutional-website
       - intranet-website
+      - intranet
       - escuta-website-wp
     volumes:
       - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
