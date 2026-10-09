@@ -34,6 +34,8 @@ The remote VM must have `olymctl` available on `PATH` (install it once from the 
 
 The CLI does not yet have a command to define remote environments. Adding remote environment configuration is a later step; for now the production user, host, and port stay hardcoded in the script, while the SSH key remains in the operator's SSH config.
 
+Unless `--no-pull` is used, `up` first fetches Olympus `origin/main`. If Olympus advances, the CLI switches to that revision and re-executes the same `up` command before preparing application repositories. A dirty Olympus checkout or local commits absent from `origin/main` stop the update. `--no-pull` skips Git updates for both Olympus and the applications. A remote production `up` performs the same Olympus update on the server before invoking its refreshed CLI.
+
 ```sh
 olymctl prod --remote up
 olymctl prod --remote up escuta --no-pull

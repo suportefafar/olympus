@@ -29,16 +29,28 @@ shell_quote() {
   printf "'%s'" "$value"
 }
 run_remote_prod() {
-  local action="$1" arg command="olymctl prod" quoted
+  local action="$1" arg command="olymctl prod" quoted remote_command update_olympus=true
   shift
   need ssh
   command+=" $(shell_quote "$action")"
   for arg in "$@"; do
     quoted="$(shell_quote "$arg")"
     command+=" $quoted"
+    [[ "$arg" != --no-pull ]] || update_olympus=false
   done
   info "Running olymctl prod $action on $REMOTE_PROD_SSH_USER@$REMOTE_PROD_SSH_HOST:$REMOTE_PROD_SSH_PORT"
-  ssh -T -p "$REMOTE_PROD_SSH_PORT" "$REMOTE_PROD_SSH_USER@$REMOTE_PROD_SSH_HOST" "$command"
+  remote_command="$command"
+  if [[ "$action" == up && "$update_olympus" == true ]]; then
+    remote_command='script_path="$(readlink -f "$(command -v olymctl)")" || exit 1
+repo="$(dirname "$script_path")" || exit 1
+if [ -n "$(git -C "$repo" status --porcelain)" ]; then echo "[ERROR] Olympus checkout has uncommitted changes; refusing self-update." >&2; exit 1; fi
+git -C "$repo" fetch origin main || exit 1
+git -C "$repo" merge-base --is-ancestor HEAD origin/main || { echo "[ERROR] Olympus has local commits outside origin/main; refusing self-update." >&2; exit 1; }
+git -C "$repo" switch --force-create main origin/main || exit 1
+exec '
+    remote_command+="$command"
+  fi
+  ssh -T -p "$REMOTE_PROD_SSH_PORT" "$REMOTE_PROD_SSH_USER@$REMOTE_PROD_SSH_HOST" "$remote_command"
 }
 compose_files() {
   COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENVFILE" -f "$ROOT/compose.yaml")
@@ -213,6 +225,23 @@ check_clean() {
     fi
   fi
 }
+update_olympus() {
+  local no_pull="$1" current target branch
+  shift
+  [[ "$no_pull" == true ]] && return 0
+  need git
+  git -C "$ROOT" fetch origin main || fail "Could not fetch Olympus main."
+  check_clean "$ROOT" "olympus"
+  current="$(git -C "$ROOT" rev-parse HEAD)"
+  target="$(git -C "$ROOT" rev-parse origin/main)"
+  branch="$(git -C "$ROOT" branch --show-current)"
+  if [[ "$current" != "$target" || "$branch" != main ]]; then
+    git -C "$ROOT" merge-base --is-ancestor "$current" "$target" || fail "Olympus has local commits outside origin/main; preserve them before updating."
+    git -C "$ROOT" switch --force-create main "$target" >/dev/null || fail "Could not switch Olympus to updated main."
+    info "Updated Olympus: ${current:0:12} -> ${target:0:12}; restarting the requested command."
+    exec "$ROOT/olymctl" "$@"
+  fi
+}
 record() {
   local env="$1" type="$2" app="$3" from="$4" to="$5" result="$6" detail="${7:-}" id now
   mkdir -p "$STATE"; touch "$HISTORY"; exec 9>"$LOCK"; flock -x 9
@@ -379,6 +408,7 @@ EOF
 }
 main() {
   [[ $# -ge 1 ]] || { usage; exit 2; }
+  local -a original_args=("$@")
   if [[ "$1" == history ]]; then [[ -f "$HISTORY" ]] && cat "$HISTORY" || info "No deploy history yet."; return; fi
   local env="$1" action="" app="" no_pull=false branch="" commit="" remote=false
   shift
@@ -400,6 +430,7 @@ main() {
         [[ -z "$commit" ]] || remote_args+=(--commit "$commit")
         run_remote_prod up "${remote_args[@]}"
       else
+        update_olympus "$no_pull" "${original_args[@]}"
         up "$env" "$app" "$no_pull" "$branch" "$commit"
       fi;;
     rollback)
