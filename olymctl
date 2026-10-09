@@ -458,7 +458,7 @@ main() {
         ports "$env"
       fi;;
     down)
-      app=""; remote=false
+      app=""
       if [[ $# -gt 0 && "$1" != --* ]]; then app="$1"; shift; fi
       while (($#)); do case "$1" in --remote) remote=true;; *) fail "Unknown down option: $1";; esac; shift; done
       if [[ "$remote" == true ]]; then
