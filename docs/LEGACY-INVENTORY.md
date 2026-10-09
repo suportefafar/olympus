@@ -8,7 +8,7 @@ Inspected source: `current-infra/services-infra` in the planning workspace, incl
 | --- | --- | --- |
 | Main applications | Compose defines WordPress institutional/intranet, Escuta, Chatrapido, Hermes, Stagemanager, Dike, Temis, Prometheus Bot, Design System, Laras 2026, Cronos | Separate services in the Olympus Compose file; no Stage environment is included |
 | Proxy | Caddy routes domains to named app services; dev uses `.local`, production uses `farmacia.ufmg.br` subdomains | One Caddy service on the shared edge network; only 80/443 are published |
-| SQL data | The legacy tree has MySQL 5.7 and PostgreSQL 17 named-volume services; MySQL import scripts and PostgreSQL init scripts exist | PostgreSQL is active in the current Compose. MySQL and WordPress are deferred because the site source is not deployable from the verified repos; the old database remains untouched and out of this stack |
+| SQL data | The legacy tree has MySQL 5.7 and PostgreSQL 17 named-volume services; MySQL import scripts and PostgreSQL init scripts exist | PostgreSQL remains active and the overlays now provide MySQL plus the three WordPress services. Production still requires a tested MySQL backup/restore and database compatibility review; the old database volume remains untouched |
 | Mongo | MongoDB named volume; Prometheus Bot depends on it | Persistent named volume retained |
 | Writable application data | ChatRapido and Stagemanager bind `storage/`; WordPress site files are bind-mounted under `institutional-website/html` and `intranet-website/html` | Rails storage binds are retained; WordPress content needs a separately designed import/persistence setup |
 | Development hosts | `up.dev.sh` adds local names to `/etc/hosts`, then runs Compose with a local Caddyfile | CLI adds missing manifest hostnames idempotently and reports privilege failures |
@@ -24,9 +24,9 @@ The legacy subdirectories had these configured origins when inspected: `intranet
 ## Operational differences and open migration work
 
 - Legacy `compose.dev.yaml` exposes many development ports and the old production overlay binds application ports to `10.10.10.2`; Olympus only publishes the Caddy ports.
-- Legacy production uses MySQL 5.7, while the initial Olympus file selects MySQL 8.4. Review compatibility and perform a tested backup/restore before migrating any production data; do not point this Compose file at the current database volume.
+- Legacy production uses MySQL 5.7, while the Olympus overlay selects MySQL 8.0. Review compatibility and perform a tested backup/restore before migrating any production data; do not point this Compose file at the current database volume without that migration plan.
 - The old Caddy config references routes and certificates from its own repo. Validate the sibling reverse-proxy repository's paths, domains, TLS material, and backend service names before deployment.
-- Several old Compose services and data paths are intentionally absent from the new stack: MySQL/WordPress, PHPMyAdmin, Mongo Express, Autoheal, stage Escuta, WordPress content trees, and import scripts. Reintroduce only after an operator confirms they are needed and access controls/data handling are settled.
+- Several old Compose services and data paths remain outside the new stack: PHPMyAdmin, Mongo Express, Autoheal, stage Escuta, and import scripts. Reintroduce only after an operator confirms they are needed and access controls/data handling are settled.
 - This first Compose draft assumes app Dockerfiles build from their repository roots. Confirm actual Dockerfiles, health endpoints, required environment keys, database names, and dependency initialization in each upstream repo.
 - Deploy completion currently means `docker compose up` exited successfully. Health-check based readiness and database migration/backup orchestration remain follow-up work.
 

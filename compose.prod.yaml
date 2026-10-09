@@ -1,5 +1,77 @@
 services:
+  mysql-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in olympus/.env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in olympus/.env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in olympus/.env}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks: [backend]
+
+  institutional-website:
+    image: wordpress:php8.3-apache
+    depends_on: [mysql-db]
+    environment:
+      WORDPRESS_DB_HOST: mysql-db:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER:?Set MYSQL_USER in olympus/.env}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in olympus/.env}
+      WORDPRESS_DB_NAME: institutional
+      WORDPRESS_DEBUG: "0"
+    volumes:
+      - type: bind
+        source: ${WORDPRESS_INSTITUTIONAL_PATH:?Set WORDPRESS_INSTITUTIONAL_PATH in olympus/.env}
+        target: /var/www/html
+    networks: [backend, edge]
+
+  intranet-website:
+    image: wordpress:php8.3-apache
+    depends_on: [mysql-db]
+    environment:
+      WORDPRESS_DB_HOST: mysql-db:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER:?Set MYSQL_USER in olympus/.env}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in olympus/.env}
+      WORDPRESS_DB_NAME: intranet
+      WORDPRESS_DEBUG: "0"
+    volumes:
+      - type: bind
+        source: ${WORDPRESS_INTRANET_PATH:?Set WORDPRESS_INTRANET_PATH in olympus/.env}
+        target: /var/www/html
+    networks: [backend, edge]
+
+  escuta-website-wp:
+    image: wordpress:php8.3-apache
+    depends_on: [mysql-db]
+    environment:
+      WORDPRESS_DB_HOST: mysql-db:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER:?Set MYSQL_USER in olympus/.env}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in olympus/.env}
+      WORDPRESS_DB_NAME: escuta_wp
+      WORDPRESS_DEBUG: "0"
+    volumes:
+      - type: bind
+        source: ${WORDPRESS_ESCUTA_PATH:?Set WORDPRESS_ESCUTA_PATH in olympus/.env}
+        target: /var/www/html
+    networks: [backend, edge]
+
+  cronos:
+    environment:
+      ALLOWED_NETWORKS: ${CRONOS_ALLOWED_NETWORKS:?Set CRONOS_ALLOWED_NETWORKS in olympus/.env}
+
   reverse-proxy:
     environment:
       CADDY_ENVIRONMENT: production
       DOMAIN_SUFFIX: ufmg.br
+    depends_on:
+      - institutional-website
+      - intranet-website
+      - escuta-website-wp
+    volumes:
+      - type: bind
+        source: ${TLS_CERTS_PATH:?Set TLS_CERTS_PATH in olympus/.env}
+        target: /etc/ssl/certs/farmacia
+        read_only: true
+
+volumes:
+  mysql-data:

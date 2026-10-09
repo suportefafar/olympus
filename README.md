@@ -19,6 +19,6 @@ Compose and repository inventory are initial migration choices based on `current
 
 ## Current checkout readiness
 
-The verified app repositories are checked out beside Olympus. The `intranet` main branch currently contains documentation only and has no Dockerfile, while no deployable institutional repository origin was found in the supplied inventory. Those two legacy WordPress services are therefore not in the active Compose app list. Their domains remain a separate migration task; Olympus does not fabricate application source.
+The verified app repositories are checked out beside Olympus. The `intranet` main branch currently contains documentation only and has no Dockerfile, while no deployable institutional repository origin was found in the supplied inventory. The institutional, intranet, and legacy Escuta WordPress sites are provided by the Compose overlays using operator-supplied content paths and database credentials; their production data still requires a planned backup and migration.
 
 Every runnable app has a root `.env.example`, a local ignored `.env`, and build-context exclusions for env files and private key material. Replace `__REQUIRED__` entries with operator-provided values. Commit the reviewed templates and ignore rules in each application before a normal pull-enabled `up`; use `--no-pull` to run the local configuration while it remains uncommitted. Do not use the legacy WordPress database volume with the new stack until its backup and migration are planned.
