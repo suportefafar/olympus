@@ -1,7 +1,37 @@
 services:
+  escuta-website:
+    build:
+      context: ../escuta-website
+      dockerfile: Dockerfile.dev
+    command:
+      - bash
+      - -lc
+      - |
+        npm run build:css
+        npm run watch:css &
+        css_pid=$$!
+        trap 'kill "$$css_pid" 2>/dev/null || true' TERM INT EXIT
+        exec ./bin/thrust ./bin/rails server
+    volumes:
+      - type: bind
+        source: ../escuta-website/app
+        target: /rails/app
+      - type: bind
+        source: ../escuta-website/config
+        target: /rails/config
+      - type: bind
+        source: ../escuta-website/lib
+        target: /rails/lib
+      - type: bind
+        source: ../escuta-website/public
+        target: /rails/public
+
   reverse-proxy:
+    build:
+      context: ../reverse-proxy
+      dockerfile: Dockerfile
     environment:
       CADDY_ENVIRONMENT: development
       DOMAIN_SUFFIX: local
     volumes:
-      - ../reverse-proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../escuta-website/Caddyfile.dev:/etc/caddy/Caddyfile:ro
