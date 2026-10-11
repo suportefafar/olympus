@@ -77,3 +77,11 @@ Registros detalhados ficam em `/var/backups/olympus-migration`: `count-compariso
 
 - Configurar uma credencial de leitura Git para os repositórios privados `escuta-website`, `temis` e `prometheus-bot` antes de executar atualizações sem `--no-pull`. O deploy atual usa checkouts locais completos e não depende desse acesso.
 - Confirmar UDP/123 a partir de um cliente real das redes permitidas. O protocolo foi validado pela rede Docker; a tentativa pelo IP público a partir do LXC antigo expirou (o acesso HTTPS por esse mesmo caminho também falhou). A publicação da porta na VM está ativa; o encaminhamento externo depende da rede de produção.
+
+## Nodus e Ciclum — preparação sem deploy
+
+Os dois serviços foram adicionados ao manifesto e ao proxy de produção, mas ainda não foram iniciados. Nodus usa um PostgreSQL 16 dedicado e compartilha o domínio `nodus.farmacia.ufmg.br` entre o frontend e `/api`; Ciclum usa SQLite persistido em `ciclum-storage` e o domínio `ciclum.farmacia.ufmg.br`.
+
+Antes de iniciar qualquer um deles, provisionar no servidor `nodus/.env.production` e `ciclum/.env.production` a partir dos exemplos, configurar `NODUS_DATABASE_PASSWORD` no `olympus/.env`, confirmar as chaves dos provedores de IA e a chave Rails do Ciclum, verificar DNS e SANs do certificado TLS, e decidir se há dados do Nodus que precisam ser migrados. Esses arquivos são privados e não devem ser commitados. O primeiro início do Nodus cria bancos vazios em volumes novos; o primeiro início do Ciclum cria a base SQLite no volume de storage.
+
+A configuração local ainda precisa ser commitada e enviada para os repositórios antes de qualquer `olymctl prod --remote up`. Nenhum comando de deploy foi executado nesta preparação.

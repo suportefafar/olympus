@@ -1,4 +1,66 @@
 services:
+  nodus-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ai_graph_chat
+      POSTGRES_PASSWORD: ${NODUS_DATABASE_PASSWORD:?Set NODUS_DATABASE_PASSWORD in olympus/.env}
+      POSTGRES_DB: ai_graph_chat_production
+    volumes:
+      - nodus-postgres-data:/var/lib/postgresql/data
+      - ../nodus/deploy/postgres-init.sql:/docker-entrypoint-initdb.d/10-create-extra-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_graph_chat -d ai_graph_chat_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [backend]
+
+  nodus-api:
+    build: {context: ../nodus}
+    env_file: [../nodus/.env.production]
+    volumes:
+      - nodus-storage:/rails/storage
+    environment:
+      RAILS_ENV: production
+      DB_HOST: nodus-db
+      RAILS_MAX_THREADS: 3
+      SOLID_QUEUE_IN_PUMA: "true"
+      NODUS_DATABASE_PASSWORD: ${NODUS_DATABASE_PASSWORD:?Set NODUS_DATABASE_PASSWORD in olympus/.env}
+      FRONTEND_ORIGIN: https://nodus.farmacia.ufmg.br
+    depends_on:
+      nodus-db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [backend, edge]
+
+  nodus-client:
+    build:
+      context: ../nodus
+      dockerfile: Dockerfile.client
+      args:
+        VITE_API_BASE: /api
+    depends_on:
+      design-system:
+        condition: service_started
+    restart: unless-stopped
+    networks: [edge]
+
+  ciclum:
+    build: {context: ../ciclum}
+    env_file: [../ciclum/.env.production]
+    environment:
+      RAILS_ENV: production
+      RAILS_MAX_THREADS: 3
+      SOLID_QUEUE_IN_PUMA: "true"
+    volumes:
+      - ciclum-storage:/rails/storage
+    depends_on:
+      design-system:
+        condition: service_started
+    restart: unless-stopped
+    networks: [edge]
+
   mysql-db:
     image: ${MYSQL_IMAGE:-mysql:8.0}
     restart: unless-stopped
@@ -79,4 +141,7 @@ services:
       - ../hermes/storage:/rails/storage
 
 volumes:
+  nodus-postgres-data:
+  ciclum-storage:
+  nodus-storage:
   mysql-data:
