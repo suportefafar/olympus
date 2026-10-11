@@ -229,7 +229,7 @@ validate_olympus_env() {
   local key value
   local required=(POSTGRES_USER POSTGRES_PASSWORD)
   if [[ "$ENVIRONMENT" == prod ]]; then
-    required+=(MYSQL_USER MYSQL_PASSWORD MYSQL_ROOT_PASSWORD WORDPRESS_INSTITUTIONAL_PATH WORDPRESS_INTRANET_PATH WORDPRESS_ESCUTA_PATH CRONOS_ALLOWED_NETWORKS)
+    required+=(MYSQL_USER MYSQL_PASSWORD MYSQL_ROOT_PASSWORD WORDPRESS_INSTITUTIONAL_PATH WORDPRESS_INTRANET_PATH CRONOS_ALLOWED_NETWORKS)
   fi
   for key in "${required[@]}"; do
     value="$(awk -F= -v k="$key" '$1==k {sub(/^[^=]*=/, ""); print; exit}' "$ENVFILE")"
@@ -361,7 +361,7 @@ up() {
   fi
   SELECTED+=(reverse-proxy)
   compose_files
-  local -a cmd=("${COMPOSE[@]}" up -d --build)
+  local -a cmd=("${COMPOSE[@]}" up -d --build --remove-orphans)
   # The proxy bind-mounts its Caddyfile, so Compose cannot detect content-only
   # changes and needs an explicit recreation to reload the configuration.
   [[ "$app_filter" != reverse-proxy ]] || cmd+=(--force-recreate)

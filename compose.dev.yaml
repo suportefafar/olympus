@@ -164,25 +164,6 @@ services:
         target: /var/www/html
     networks: [backend, edge]
 
-  escuta-website-wp:
-    image: wordpress:php8.3-apache
-    depends_on: [mysql-db]
-    environment:
-      WORDPRESS_DB_HOST: mysql-db:3306
-      WORDPRESS_DB_USER: ${MYSQL_USER:-local-wp}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-local-mysql-2026}
-      WORDPRESS_DB_NAME: escuta_wp
-      WORDPRESS_DEBUG: "1"
-      WORDPRESS_CONFIG_EXTRA: |
-        define( 'WP_HOME', 'http://escuta-wp.farmacia.local' );
-        define( 'WP_SITEURL', 'http://escuta-wp.farmacia.local' );
-        define( 'WP_ENVIRONMENT_TYPE', 'development' );
-    volumes:
-      - type: bind
-        source: ../../services-infra/escuta-website-wp/html
-        target: /var/www/html
-    networks: [backend, edge]
-
   escuta-website:
     build:
       context: ../escuta-website
