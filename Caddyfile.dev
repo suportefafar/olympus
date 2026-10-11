@@ -65,6 +65,40 @@ https://chatrapido.farmacia.local {
     reverse_proxy chatrapido:80
 }
 
+http://nodus.farmacia.local {
+    handle /api/* {
+        reverse_proxy nodus-api:3000
+    }
+    handle /up {
+        reverse_proxy nodus-api:3000
+    }
+    handle {
+        reverse_proxy nodus-client:5173
+    }
+}
+
+https://nodus.farmacia.local {
+    import devTls
+    handle /api/* {
+        reverse_proxy nodus-api:3000
+    }
+    handle /up {
+        reverse_proxy nodus-api:3000
+    }
+    handle {
+        reverse_proxy nodus-client:5173
+    }
+}
+
+http://ciclum.farmacia.local {
+    reverse_proxy ciclum:3000
+}
+
+https://ciclum.farmacia.local {
+    import devTls
+    reverse_proxy ciclum:3000
+}
+
 http://stagemanager.farmacia.local {
     reverse_proxy stagemanager:80
 }

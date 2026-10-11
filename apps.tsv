@@ -4,6 +4,8 @@ intranet	git@github.com:suportefafar/intranet.git	intranet	intranet-stage.farmac
 escuta-website	git@github.com:suportefafar/escuta-website.git	escuta-website	nova-escuta.farmacia.ufmg.br,nova-escuta.farmacia.local,escuta.farmacia.local	true
 chatrapido	git@github.com:suportefafar/chatrapido.git	chatrapido	chatrapido.farmacia.ufmg.br,chatrapido.farmacia.local	true
 stagemanager	git@github.com:suportefafar/stagemanager.git	stagemanager	stagemanager.farmacia.ufmg.br,stagemanager.farmacia.local	true
+nodus	git@github.com:giovanecf/nodus.git	nodus-api,nodus-client	nodus.farmacia.local	true	dev
+ciclum	git@github.com:suportefafar/ciclum.git	ciclum	ciclum.farmacia.local	true	dev
 dike	git@github.com:suportefafar/dike.git	dike	-	true
 temis	git@github.com:suportefafar/temis.git	temis	-	true
 prometheus-bot	git@github.com:suportefafar/prometheus-bot.git	prometheus-bot	-	true

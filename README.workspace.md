@@ -7,6 +7,8 @@ Olympus coordinates the deployable FAFAR services with Docker Compose. Applicati
 - [Escuta](./escuta-website/README.md)
 - [ChatRapido](./chatrapido/README.md)
 - [Stagemanager](./stagemanager/README.md)
+- [Nodus](./nodus/README.md)
+- [Ciclum](./ciclum/README.md)
 - [Design System](./design-system/README.md)
 
 Run `./olympus/olymctl dev up` after configuring the required local env files and committing the reviewed app templates, or use `--no-pull` to deploy the current checkouts. The legacy Intranet and Institutional WordPress services are not in the active stack because the pulled repositories do not contain deployable source for them yet.
