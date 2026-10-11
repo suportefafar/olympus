@@ -80,8 +80,8 @@ Registros detalhados ficam em `/var/backups/olympus-migration`: `count-compariso
 
 ## Nodus e Ciclum — preparação sem deploy
 
-Os dois serviços foram adicionados ao manifesto e ao proxy de produção, mas ainda não foram iniciados. Nodus usa um PostgreSQL 16 dedicado e compartilha o domínio `nodus.farmacia.ufmg.br` entre o frontend e `/api`; Ciclum usa SQLite persistido em `ciclum-storage` e o domínio `ciclum.farmacia.ufmg.br`.
+Os dois serviços foram adicionados ao manifesto e ao proxy de produção, mas ainda não foram iniciados. Ambos usam o PostgreSQL compartilhado do Olympus com bancos próprios. Nodus usa `ai_graph_chat_production` e seus bancos auxiliares, e compartilha o domínio `nodus.farmacia.ufmg.br` entre o frontend e `/api`; Ciclum usa `ciclum_production` e o domínio `ciclum.farmacia.ufmg.br`.
 
-Antes de iniciar qualquer um deles, provisionar no servidor `nodus/.env.production` e `ciclum/.env.production` a partir dos exemplos, configurar `NODUS_DATABASE_PASSWORD` no `olympus/.env`, confirmar as chaves dos provedores de IA e a chave Rails do Ciclum, verificar DNS e SANs do certificado TLS, e decidir se há dados do Nodus que precisam ser migrados. Esses arquivos são privados e não devem ser commitados. O primeiro início do Nodus cria bancos vazios em volumes novos; o primeiro início do Ciclum cria a base SQLite no volume de storage.
+Antes de iniciar qualquer um deles, provisionar no servidor `nodus/.env.production` e `ciclum/.env.production` a partir dos exemplos, confirmar `POSTGRES_USER` e `POSTGRES_PASSWORD` no `olympus/.env`, configurar as chaves dos provedores de IA e a chave Rails do Ciclum, verificar DNS e SANs do certificado TLS, e decidir se há dados do Nodus que precisam ser migrados. Esses arquivos são privados e não devem ser commitados. No primeiro início, Rails prepara os bancos de cada aplicação no serviço PostgreSQL compartilhado; os volumes de storage guardam uploads.
 
 A configuração local ainda precisa ser commitada e enviada para os repositórios antes de qualquer `olymctl prod --remote up`. Nenhum comando de deploy foi executado nesta preparação.
