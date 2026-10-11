@@ -18,7 +18,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
       RAILS_MAX_THREADS: 3
-      SOLID_QUEUE_IN_PUMA: "true"
       FRONTEND_ORIGIN: https://nodus.farmacia.ufmg.br
     depends_on:
       postgres-db:
