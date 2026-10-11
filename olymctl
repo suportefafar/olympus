@@ -69,6 +69,7 @@ compose_files() {
       COMPOSE+=(-f "$ROOT/compose.prod.local.yaml")
     fi
     COMPOSE+=(-f "$reverse_proxy_dir/compose.olympus.prod.yaml")
+    COMPOSE+=(-f "$ROOT/compose.prod.cleanup.yaml")
   fi
 }
 read_app() {

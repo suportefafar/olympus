@@ -1,0 +1,4 @@
+# Retired services must stay disabled even if a server-local override still
+# contains an older definition.
+services:
+  escuta-website-wp: !reset null
