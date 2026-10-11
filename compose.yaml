@@ -19,7 +19,7 @@ services:
   hermes:
     build: {context: ../hermes}
     env_file: [../hermes/.env]
-    depends_on: [postgres-db]
+    depends_on: [postgres-db, design-system]
     restart: unless-stopped
     networks: [backend, edge]
 

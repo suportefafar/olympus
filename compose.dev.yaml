@@ -45,7 +45,6 @@ services:
     environment:
       RAILS_ENV: development
       OLYMPUS_DEV: "1"
-      DATABASE_URL: ""
       POSTGRES_HOST: postgres-db
       POSTGRES_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
@@ -71,6 +70,9 @@ services:
     environment:
       VITE_API_BASE: /api
     command: ["sh", "-lc", "if [ ! -x node_modules/.bin/vite ]; then npm ci; fi; exec npm run dev -- --host 0.0.0.0"]
+    depends_on:
+      design-system:
+        condition: service_started
     volumes:
       - ../nodus/client:/app
       - nodus-client-node-modules:/app/node_modules
@@ -90,10 +92,12 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
-    command: ["bash", "-lc", "bundle exec rails db:prepare && exec bundle exec rails server"]
+    command: ["bash", "-lc", "bundle exec rails db:prepare && exec bundle exec rails server -b 0.0.0.0 -p 3000"]
     depends_on:
       postgres-db:
         condition: service_healthy
+      design-system:
+        condition: service_started
     volumes:
       - ../ciclum/app:/rails/app
       - ../ciclum/config:/rails/config
