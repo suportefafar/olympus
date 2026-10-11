@@ -86,7 +86,6 @@ services:
       RAILS_ENV: development
       BIND_ADDRESS: 0.0.0.0
       PORT: "3000"
-      DATABASE_URL: ""
       POSTGRES_HOST: postgres-db
       POSTGRES_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
