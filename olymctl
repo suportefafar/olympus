@@ -95,8 +95,10 @@ copy_workspace_readme() {
   info "Published workspace README from olympus/README.workspace.md"
 }
 prepare_app_env() {
-  local app="$1" dir example env
+  local app="$1" dir example env dockerignore
   dir="$(repo_dir "$app")"; example="$dir/.env.example"; env="$dir/.env"
+  dockerignore="$dir/.dockerignore"
+  [[ "$app" != reverse-proxy ]] || dockerignore="$dir/web-server/.dockerignore"
   [[ -d "$dir/.git" ]] || fail "Missing checkout for '$app' at $dir"
   [[ -f "$env" ]] || {
     if [[ -f "$example" ]]; then cp -- "$example" "$env"; chmod 600 "$env"; info "Created $app/.env from .env.example; review placeholders before startup.";
@@ -108,7 +110,7 @@ prepare_app_env() {
   elif [[ "$APP_ENV_REQUIRED" == true ]]; then
     fail "'$app' needs a versioned .env.example before deployment."
   fi
-  grep -Eq '(^|/)\.env(\*|\.\*|[[:space:]]|$)' "$dir/.dockerignore" 2>/dev/null || fail "'$app' must exclude .env from its Docker build context via .dockerignore"
+  grep -Eq '(^|/)\.env(\*|\.\*|[[:space:]]|$)' "$dockerignore" 2>/dev/null || fail "'$app' must exclude .env from its Docker build context via .dockerignore"
   if [[ "$ENVIRONMENT" == dev && "$app" == hermes ]]; then
     local tmp
     tmp="$(mktemp)"
@@ -342,7 +344,6 @@ up() {
   if [[ -n "$app_filter" ]]; then chosen=("$app_filter"); else mapfile -t chosen < <(apps); fi
   local -a affected=()
   declare -A previous_sha=() deployed_sha=()
-  prepare_git reverse-proxy git@github.com:suportefafar/reverse-proxy.git "" "" "$no_pull"
   for app in "${chosen[@]}"; do
     read_app "$app" || fail "Unknown application '$app'."
     app_enabled_in_environment || fail "'$app' is not enabled in $env."
