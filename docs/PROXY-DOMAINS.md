@@ -5,7 +5,7 @@ The Compose environment chooses a distinct Caddyfile:
 - `olymctl dev` mounts `Caddyfile.dev`. It serves `*.farmacia.local` with Caddy's internal development certificates.
 - `olymctl prod` mounts `Caddyfile.prod`. It serves `*.farmacia.ufmg.br` with the installed production certificate.
 
-The local development command must register only `*.farmacia.local` in `/etc/hosts`. Production `*.farmacia.ufmg.br` names must use normal DNS and resolve to the production VM. Earlier Olympus versions also mapped official `.ufmg.br` names to `127.0.0.1`; the updated `olymctl dev up` removes only those Olympus-managed stale mappings, preserves `.local`, and saves a backup before editing `/etc/hosts`. If passwordless sudo is unavailable, it lists the stale names and leaves `/etc/hosts` untouched.
+The local development command registers only `*.farmacia.local` in `/etc/hosts`. Production `*.farmacia.ufmg.br` names must use normal DNS and resolve to the production VM. Earlier Olympus versions also mapped official `.ufmg.br` names to `127.0.0.1`; the updated `olymctl dev up` removes only those Olympus-managed stale mappings, preserves `.local`, and saves a backup before editing `/etc/hosts`. If passwordless sudo is unavailable, it asks for confirmation before invoking sudo interactively to remove stale mappings or add missing local hostnames. Without a terminal, or if permission is declined, it lists the required manual changes and leaves those mappings untouched.
 
 The active production proxy was compared with the previous production Caddyfile and validates successfully on the VM. Its host routes point at services on the shared Docker edge network. Dike is an internal service and intentionally has no hostname in either environment.
 

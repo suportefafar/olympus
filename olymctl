@@ -127,7 +127,7 @@ prepare_app_env() {
 }
 ensure_dev_hosts() {
   [[ "$ENVIRONMENT" == dev ]] || return 0
-  local domains host line add=() cleanup_tmp backup stale
+  local domains host line add=() cleanup_tmp backup stale reply add_text
 
   # Older Olympus versions mapped official production hostnames to localhost.
   # Drop only those tool-managed aliases; keep all *.farmacia.local dev names.
@@ -161,7 +161,22 @@ ensure_dev_hosts() {
       info "Removed stale development mappings for production domains; backup: $backup"
     else
       stale="$(awk '$1 == "127.0.0.1" && /# olympus-managed/ { for (i = 2; i <= NF && $i != "#"; i++) if ($i == "true" || $i ~ /\.farmacia\.ufmg\.br$/) printf "%s ", $i }' /etc/hosts)"
-      info "Development now uses only *.farmacia.local. Remove these stale production aliases from /etc/hosts as an administrator: $stale (backup: $backup)"
+      if [[ -t 0 && -r /dev/tty ]] && command -v sudo >/dev/null 2>&1; then
+        printf 'Remover os aliases antigos de produção do /etc/hosts? [s/N]\n%s\nBackup: %s\n' "$stale" "$backup" > /dev/tty
+        read -r reply < /dev/tty || reply=""
+        case "$reply" in
+          s|S|sim|SIM|y|Y|yes|YES)
+            if sudo -v && sudo install -m 644 -- "$cleanup_tmp" /etc/hosts; then
+              info "Removed stale development mappings for production domains; backup: $backup"
+            else
+              info "Permission was not granted; stale production aliases remain in /etc/hosts. Backup: $backup"
+            fi
+            ;;
+          *) info "No changes made to /etc/hosts. Remove these stale production aliases as an administrator if needed: $stale (backup: $backup)" ;;
+        esac
+      else
+        info "Development now uses only *.farmacia.local. Remove these stale production aliases from /etc/hosts as an administrator: $stale (backup: $backup)"
+      fi
     fi
   fi
   rm -f -- "$cleanup_tmp"
@@ -175,11 +190,31 @@ ensure_dev_hosts() {
     done
   done < "$MANIFEST"
   ((${#add[@]})) || return 0
-  if ! command -v sudo >/dev/null 2>&1 || ! sudo -n true 2>/dev/null; then
-    info "Could not update /etc/hosts without an interactive sudo session; add these entries as an administrator: ${add[*]}"
+  add_text="$(printf '%s\n' "${add[@]}")"
+  if [[ "$EUID" == 0 ]]; then
+    printf '%s\n' "$add_text" >> /etc/hosts || fail "Could not update /etc/hosts."
+    info "Added local development hostnames to /etc/hosts."
     return 0
   fi
-  printf '%s\n' "${add[@]}" | sudo tee -a /etc/hosts >/dev/null || fail "Could not update /etc/hosts; no hostnames were claimed as configured."
+  if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    printf '%s\n' "$add_text" | sudo tee -a /etc/hosts >/dev/null || fail "Could not update /etc/hosts; no hostnames were claimed as configured."
+    info "Added local development hostnames to /etc/hosts."
+    return 0
+  fi
+  if [[ ! -t 0 || ! -r /dev/tty ]]; then
+    info "Could not update /etc/hosts without an interactive terminal; add these entries as an administrator: $add_text"
+    return 0
+  fi
+  printf 'Adicionar estas entradas ao /etc/hosts? [s/N]\n%s\n' "$add_text" > /dev/tty
+  read -r reply < /dev/tty || reply=""
+  case "$reply" in
+    s|S|sim|SIM|y|Y|yes|YES) ;;
+    *) info "No changes made to /etc/hosts. Add these entries as an administrator if needed: $add_text"; return 0 ;;
+  esac
+  command -v sudo >/dev/null 2>&1 || { info "sudo is unavailable; add these entries as an administrator: $add_text"; return 0; }
+  sudo -v || { info "Permission was not granted; no changes made to /etc/hosts."; return 0; }
+  printf '%s\n' "$add_text" | sudo tee -a /etc/hosts >/dev/null || fail "Could not update /etc/hosts; no hostnames were claimed as configured."
+  info "Added local development hostnames to /etc/hosts."
 }
 
 validate_olympus_env() {
