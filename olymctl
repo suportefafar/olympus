@@ -333,7 +333,7 @@ prepare_git() {
 }
 
 up() {
-  local env="$1" app_filter="${2:-}" no_pull="$3" branch="$4" commit="$5" app url services domains required dir old sha id= status=success failed=0
+  local env="$1" app_filter="${2:-}" no_pull="$3" branch="$4" commit="$5" prepare_only="${6:-false}" app url services domains required dir old sha id= status=success failed=0
   ENVIRONMENT="$env"; check_prerequisites; [[ -f "$ENVFILE" ]] || { [[ -f "$ROOT/.env.example" ]] || fail "Missing Olympus .env.example"; cp -- "$ROOT/.env.example" "$ENVFILE"; chmod 600 "$ENVFILE"; info "Created olympus/.env from .env.example; configure its database credentials."; }
   validate_olympus_env
   copy_workspace_readme
@@ -342,6 +342,7 @@ up() {
   if [[ -n "$app_filter" ]]; then chosen=("$app_filter"); else mapfile -t chosen < <(apps); fi
   local -a affected=()
   declare -A previous_sha=() deployed_sha=()
+  prepare_git reverse-proxy git@github.com:suportefafar/reverse-proxy.git "" "" "$no_pull"
   for app in "${chosen[@]}"; do
     read_app "$app" || fail "Unknown application '$app'."
     app_enabled_in_environment || fail "'$app' is not enabled in $env."
@@ -353,6 +354,10 @@ up() {
     previous_sha["$app"]="$old"; deployed_sha["$app"]="$sha"
     compose_app_services "$app"; affected+=("$app:$old:$sha")
   done
+  if [[ "$prepare_only" == true ]]; then
+    info "Prepared production checkouts for ${chosen[*]} and reverse-proxy; no services were started or restarted."
+    return 0
+  fi
   SELECTED+=(reverse-proxy)
   compose_files
   local -a cmd=("${COMPOSE[@]}" up -d --build)
@@ -442,7 +447,7 @@ ports() {
 
 usage() { cat <<'EOF'
 Usage:
-  olymctl dev|prod [--remote] up [app] [--no-pull] [--branch NAME] [--commit SHA]
+  olymctl dev|prod [--remote] up [app] [--no-pull] [--branch NAME] [--commit SHA] [--prepare-only]
   olymctl dev|prod [--remote] rollback app [--commit SHA]
   olymctl prod --remote down app
   olymctl dev|prod [--remote] status
@@ -455,7 +460,7 @@ main() {
   [[ $# -ge 1 ]] || { usage; exit 2; }
   local -a original_args=("$@")
   if [[ "$1" == history ]]; then [[ -f "$HISTORY" ]] && cat "$HISTORY" || info "No deploy history yet."; return; fi
-  local env="$1" action="" app="" no_pull=false branch="" commit="" remote=false
+  local env="$1" action="" app="" no_pull=false branch="" commit="" remote=false prepare_only=false
   shift
   if [[ "${1:-}" == --remote ]]; then remote=true; shift; fi
   action="${1:-}"
@@ -464,7 +469,8 @@ main() {
   case "$action" in
     up)
       if [[ $# -gt 0 && "$1" != --* ]]; then app="$1"; shift; fi
-      while (($#)); do case "$1" in --no-pull) no_pull=true;; --branch) (($#>=2)) || fail "--branch needs a value"; branch="$2"; shift;; --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; --remote) remote=true;; *) fail "Unknown up option: $1";; esac; shift; done
+      while (($#)); do case "$1" in --no-pull) no_pull=true;; --branch) (($#>=2)) || fail "--branch needs a value"; branch="$2"; shift;; --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; --remote) remote=true;; --prepare-only) prepare_only=true;; *) fail "Unknown up option: $1";; esac; shift; done
+      [[ "$prepare_only" == false || "$env" == prod ]] || fail "--prepare-only is supported only for production preparation."
       [[ -z "$branch$commit" || -n "$app" ]] || fail "--branch and --commit apply only to individual application up."
       if [[ "$remote" == true ]]; then
         [[ "$env" == prod ]] || fail "--remote is supported only with prod up."
@@ -473,10 +479,11 @@ main() {
         [[ "$no_pull" == false ]] || remote_args+=(--no-pull)
         [[ -z "$branch" ]] || remote_args+=(--branch "$branch")
         [[ -z "$commit" ]] || remote_args+=(--commit "$commit")
+        [[ "$prepare_only" == false ]] || remote_args+=(--prepare-only)
         run_remote_prod up "${remote_args[@]}"
       else
         update_olympus "$no_pull" "${original_args[@]}"
-        up "$env" "$app" "$no_pull" "$branch" "$commit"
+        up "$env" "$app" "$no_pull" "$branch" "$commit" "$prepare_only"
       fi;;
     rollback)
       [[ $# -ge 1 ]] || fail "rollback needs an application"; app="$1"; shift

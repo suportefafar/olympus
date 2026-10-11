@@ -9,12 +9,14 @@ The CLI follows the shape `olymctl <ambiente> [--remote] <comando> [flags]`. An 
 ```sh
 olymctl dev up [app] [--no-pull] [--branch NAME] [--commit SHA]
 olymctl prod up [app] [--no-pull] [--branch NAME] [--commit SHA]
+olymctl prod up --prepare-only
 olymctl prod rollback APP [--commit SHA]
 olymctl dev status
 olymctl prod status
 olymctl dev ports
 olymctl prod ports
 olymctl prod --remote up [app] [--no-pull]
+olymctl prod --remote up --prepare-only
 olymctl prod --remote rollback APP [--commit SHA]
 olymctl prod --remote status
 olymctl prod --remote ports
@@ -48,7 +50,9 @@ olymctl prod --remote ports
 
 `status` prints a one-time container snapshot with CPU and RAM usage, health, state, network I/O, and block I/O. Network and block I/O are cumulative since each container started; stopped containers have no live resource sample. `ports` lists ports declared inside each container and host-to-container port mappings. A declared internal port does not prove that an application is listening on it.
 
-The first `up` prepares missing checkouts from `apps.tsv`, creates `.env` only from a repository's `.env.example`, copies `README.workspace.md` to the workspace root, and then starts the selected Compose services. Missing or placeholder settings stop startup for the affected app.
+`up --prepare-only` syncs the production source checkouts, including the reverse proxy, and prepares app `.env` files from their tracked examples without running Compose. Use it to provision private first-deploy `.env.production` files before the first start.
+
+The first `up` prepares missing checkouts from `apps.tsv` and the reverse proxy, creates `.env` only from a repository's `.env.example`, copies `README.workspace.md` to the workspace root, and then starts the selected Compose services. Missing or placeholder settings stop startup for the affected app.
 
 Compose and repository inventory are initial migration choices based on `current-infra/services-infra`. Review service-specific database variables, health checks, secrets, proxy routes, and data migration before production use. The legacy stack combines application configuration in one root `.env`; this orchestrator deliberately does not carry that file forward.
 
