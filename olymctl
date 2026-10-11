@@ -362,6 +362,9 @@ up() {
   SELECTED+=(reverse-proxy)
   compose_files
   local -a cmd=("${COMPOSE[@]}" up -d --build)
+  # The proxy bind-mounts its Caddyfile, so Compose cannot detect content-only
+  # changes and needs an explicit recreation to reload the configuration.
+  [[ "$app_filter" != reverse-proxy ]] || cmd+=(--force-recreate)
   cmd+=("${SELECTED[@]}")
   id="$(record "$env" up "${app_filter:-all}" "" "" started)"
   if ! "${cmd[@]}"; then status=failed; failed=1; fi
