@@ -65,10 +65,10 @@ compose_files() {
   if [[ "$ENVIRONMENT" == prod ]]; then
     COMPOSE+=(--env-file "$reverse_proxy_dir/.env")
     COMPOSE+=(-f "$ROOT/compose.prod.yaml")
-    COMPOSE+=(-f "$reverse_proxy_dir/compose.olympus.prod.yaml")
     if [[ -f "$ROOT/compose.prod.local.yaml" ]]; then
       COMPOSE+=(-f "$ROOT/compose.prod.local.yaml")
     fi
+    COMPOSE+=(-f "$reverse_proxy_dir/compose.olympus.prod.yaml")
   fi
 }
 read_app() {
