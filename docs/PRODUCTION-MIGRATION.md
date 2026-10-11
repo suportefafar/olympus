@@ -64,7 +64,7 @@ A configuração do proxy publica os serviços de produção do Olympus. Os anti
 
 Foram conferidos certificado TLS, páginas finais e arquivos CSS/JS/imagens dos domínios do proxy. Institucional apresenta o conteúdo existente; intranet, Escuta e Hermes apresentam login; StageManager, ChatRápido (incluindo `c`), Laras e Design System apresentam suas páginas. Dike responde em `/api/health`; a raiz `/` não é uma página da API. Cronos responde HTTP 200 internamente e pacote NTP de 48 bytes em modo servidor; clientes fora das redes autorizadas recebem 403 por HTTPS.
 
-O alias `nova-escuta` redireciona para Escuta Rails. O serviço WordPress independente da Escuta foi descontinuado e suas rotas foram removidas.
+O alias `nova-escuta` redireciona para Escuta Rails.
 
 Registros detalhados ficam em `/var/backups/olympus-migration`: `count-comparison.json`, `http-check.json`, `pages-check.json`, `laras-assets-check.json` e logs de deploy. A origem permanece parada para evitar execução duplicada de jobs; não religar seus apps após a migração.
 
