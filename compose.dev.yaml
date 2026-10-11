@@ -119,7 +119,7 @@ services:
 
   cronos:
     environment:
-      # Caddy reaches Cronos through the isolated dev edge network.
+      # Permit HTTP requests from the Olympus dev edge network.
       ALLOWED_NETWORKS: 172.24.0.0/16
 
   institutional-website:
@@ -205,24 +205,6 @@ services:
       - type: bind
         source: ../escuta-website/public
         target: /rails/public
-
-  reverse-proxy:
-    build:
-      context: ../reverse-proxy
-      dockerfile: Dockerfile
-    environment:
-      CADDY_ENVIRONMENT: development
-      DOMAIN_SUFFIX: local
-    depends_on:
-      - institutional-website
-      - intranet-website
-      - intranet
-      - escuta-website-wp
-      - nodus-api
-      - nodus-client
-      - ciclum
-    volumes:
-      - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
 
 volumes:
   mysql-data:

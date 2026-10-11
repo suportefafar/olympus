@@ -53,13 +53,19 @@ exec '
   ssh -T -p "$REMOTE_PROD_SSH_PORT" "$REMOTE_PROD_SSH_USER@$REMOTE_PROD_SSH_HOST" "$remote_command"
 }
 compose_files() {
-  COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENVFILE" -f "$ROOT/compose.yaml")
+  local reverse_proxy_dir
+  reverse_proxy_dir="$(repo_dir reverse-proxy)"
+  export REVERSE_PROXY_DIR="$reverse_proxy_dir"
+  COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENVFILE" -f "$ROOT/compose.yaml" -f "$reverse_proxy_dir/compose.olympus.yaml")
   if [[ "$ENVIRONMENT" == dev ]]; then
     COMPOSE+=(--profile dev)
     COMPOSE+=(-f "$ROOT/compose.dev.yaml")
+    COMPOSE+=(-f "$reverse_proxy_dir/compose.olympus.dev.yaml")
   fi
   if [[ "$ENVIRONMENT" == prod ]]; then
+    COMPOSE+=(--env-file "$reverse_proxy_dir/.env")
     COMPOSE+=(-f "$ROOT/compose.prod.yaml")
+    COMPOSE+=(-f "$reverse_proxy_dir/compose.olympus.prod.yaml")
     if [[ -f "$ROOT/compose.prod.local.yaml" ]]; then
       COMPOSE+=(-f "$ROOT/compose.prod.local.yaml")
     fi
@@ -221,7 +227,7 @@ validate_olympus_env() {
   local key value
   local required=(POSTGRES_USER POSTGRES_PASSWORD)
   if [[ "$ENVIRONMENT" == prod ]]; then
-    required+=(MYSQL_USER MYSQL_PASSWORD MYSQL_ROOT_PASSWORD WORDPRESS_INSTITUTIONAL_PATH WORDPRESS_INTRANET_PATH WORDPRESS_ESCUTA_PATH TLS_CERTS_PATH CRONOS_ALLOWED_NETWORKS)
+    required+=(MYSQL_USER MYSQL_PASSWORD MYSQL_ROOT_PASSWORD WORDPRESS_INSTITUTIONAL_PATH WORDPRESS_INTRANET_PATH WORDPRESS_ESCUTA_PATH CRONOS_ALLOWED_NETWORKS)
   fi
   for key in "${required[@]}"; do
     value="$(awk -F= -v k="$key" '$1==k {sub(/^[^=]*=/, ""); print; exit}' "$ENVFILE")"

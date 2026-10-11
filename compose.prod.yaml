@@ -78,20 +78,5 @@ services:
     volumes:
       - ../hermes/storage:/rails/storage
 
-  reverse-proxy:
-    environment:
-      CADDY_ENVIRONMENT: production
-      DOMAIN_SUFFIX: ufmg.br
-    depends_on:
-      - institutional-website
-      - intranet-website
-      - escuta-website-wp
-    volumes:
-      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
-      - type: bind
-        source: ${TLS_CERTS_PATH:?Set TLS_CERTS_PATH in olympus/.env}
-        target: /etc/ssl/certs/farmacia
-        read_only: true
-
 volumes:
   mysql-data:
