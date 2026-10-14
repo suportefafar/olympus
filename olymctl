@@ -288,7 +288,6 @@ status_table() {
     width=${#value}
     ((width <= widths[column])) || widths[column]="$width"
   done
-  widths[0]=$((widths[0] + 1))
   printf '|'
   for ((i=0; i<${#cells[@]}; i++)); do
     column=$((i % 9))
@@ -488,7 +487,7 @@ status() {
   printf 'Snapshot %s | ambiente: %s\n' "$timestamp" "$env"
   printf 'I/O de rede e disco são acumulados desde o início do container.\n\n'
   for name in "${names[@]}"; do
-    table_cells+=("$name" "${states[$name]}" "${healths[$name]}" "${cpus[$name]:-—}" \
+    table_cells+=("$name " "${states[$name]}" "${healths[$name]}" "${cpus[$name]:-—}" \
       "${memories[$name]:-—}" "${memory_pcts[$name]:-—}" "${net_ios[$name]:-—}" \
       "${block_ios[$name]:-—}" "${pids[$name]:-—}")
   done
