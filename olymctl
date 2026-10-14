@@ -288,6 +288,7 @@ status_table() {
     width=${#value}
     ((width <= widths[column])) || widths[column]="$width"
   done
+  printf '|'
   for ((i=0; i<${#cells[@]}; i++)); do
     column=$((i % 9))
     value="${cells[$i]}"
