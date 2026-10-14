@@ -289,10 +289,10 @@ status_table() {
     ((width <= widths[column])) || widths[column]="$width"
   done
   widths[0]=$((widths[0] + 1))
-  printf '|'
   for ((i=0; i<${#cells[@]}; i++)); do
     column=$((i % 9))
     value="${cells[$i]}"
+    if ((column == 0)); then printf '|'; fi
     padding=$((widths[column] - ${#value}))
     if ((column == 1 || column == 2)) && ((i >= 9)) && [[ "$color_enabled" == true ]]; then
       case "$value" in
