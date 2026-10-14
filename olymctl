@@ -50,6 +50,13 @@ git -C "$repo" switch --force-create main origin/main || exit 1
 exec '
     remote_command+="$command"
   fi
+  if [[ "$action" == status ]]; then
+    if status_color_enabled; then
+      remote_command="OLYMCTL_COLOR=always $command"
+    else
+      remote_command="OLYMCTL_COLOR=never $command"
+    fi
+  fi
   ssh -T -p "$REMOTE_PROD_SSH_PORT" "$REMOTE_PROD_SSH_USER@$REMOTE_PROD_SSH_HOST" "$remote_command"
 }
 compose_files() {
@@ -246,17 +253,72 @@ check_docker() {
 check_prerequisites() { need git; need curl; check_docker; }
 state_label() {
   case "$1" in
-    created) printf 'criado';; restarting) printf 'reiniciando' ;; running) printf 'rodando' ;;
-    removing) printf 'removendo' ;; paused) printf 'pausado' ;; exited) printf 'parado' ;;
-    dead) printf 'encerrado com erro' ;; *) printf '%s' "$1" ;;
+    created) printf '[!] criado';; restarting) printf '[!] reiniciando' ;; running) printf '[OK] rodando' ;;
+    removing) printf '[!] removendo' ;; paused) printf '[!] pausado' ;; exited) printf '[ERRO] parado' ;;
+    dead) printf '[ERRO] encerrado com erro' ;; *) printf '[?] %s' "$1" ;;
   esac
 }
 health_label() {
   case "$1" in
-    healthy) printf 'saudável' ;; unhealthy) printf 'não saudável' ;;
-    starting) printf 'verificando' ;; 'sem healthcheck') printf 'sem healthcheck' ;;
-    *) printf '%s' "$1" ;;
+    healthy) printf '[OK] saudável' ;; unhealthy) printf '[ERRO] não saudável' ;;
+    starting) printf '[!] verificando' ;; 'sem healthcheck') printf '[--] sem healthcheck' ;;
+    *) printf '[?] %s' "$1" ;;
   esac
+}
+status_color_enabled() {
+  local mode="${OLYMCTL_COLOR:-auto}"
+  [[ -z "${NO_COLOR:-}" ]] || return 1
+  [[ "$mode" != never ]] || return 1
+  [[ "$mode" == always ]] && return 0
+  [[ -t 1 && "${TERM:-dumb}" != dumb ]]
+}
+status_table() {
+  local value column width padding color reset='' color_enabled=false
+  local -a cells=("$@") widths=(0 0 0 0 0 0 0 0 0)
+  if ((${#cells[@]} % 9 != 0)); then
+    fail "Internal error: status table needs nine columns."
+  fi
+  if status_color_enabled; then
+    color_enabled=true
+    reset=$'\033[0m'
+  fi
+  for ((i=0; i<${#cells[@]}; i++)); do
+    column=$((i % 9))
+    value="${cells[$i]}"
+    width=${#value}
+    ((width <= widths[column])) || widths[column]="$width"
+  done
+  for ((i=0; i<${#cells[@]}; i++)); do
+    column=$((i % 9))
+    value="${cells[$i]}"
+    padding=$((widths[column] - ${#value}))
+    if ((column == 1 || column == 2)) && ((i >= 9)) && [[ "$color_enabled" == true ]]; then
+      case "$value" in
+        '[OK]'*) color=$'\033[32m' ;;
+        '[ERRO]'*) color=$'\033[31m' ;;
+        '[!]'*|'[?]'*) color=$'\033[33m' ;;
+        *) color=$'\033[90m' ;;
+      esac
+    else
+      color=''
+    fi
+    if ((column <= 2)); then
+      printf ' %s%s%s%*s |' "$color" "$value" "$reset" "$padding" ''
+    else
+      printf ' %*s%s |' "$padding" '' "$value"
+    fi
+    if ((column == 8)); then
+      printf '\n'
+      if ((i == 8)); then
+        for ((column=0; column<9; column++)); do
+          printf '|'
+          printf -v value '%*s' "$((widths[column] + 2))" ''
+          printf '%s' "${value// /-}"
+        done
+        printf '|\n'
+      fi
+    fi
+  done
 }
 check_clean() {
   local dir="$1" label="$2" branch upstream tip
@@ -392,6 +454,7 @@ rollback() {
 status() {
   local env="$1" id details name state health cpu mem memory_pct net_io block_io pid timestamp container_ids stats_output
   local -a ids=() running_ids=() names=()
+  local -a table_cells=('Container' 'Estado' 'Saúde' 'CPU' 'RAM (uso / limite)' 'RAM %' 'NET I/O (RX / TX)' 'DISK I/O (leitura / escrita)' 'PIDs')
   local -A states=() healths=() cpus=() memories=() memory_pcts=() net_ios=() block_ios=() pids=()
   ENVIRONMENT="$env"; check_docker; compose_files
   container_ids="$("${COMPOSE[@]}" ps -a -q)" || fail "Could not list $env containers."
@@ -422,14 +485,12 @@ status() {
   timestamp="$(date '+%Y-%m-%d %H:%M:%S %Z')"
   printf 'Snapshot %s | ambiente: %s\n' "$timestamp" "$env"
   printf 'I/O de rede e disco são acumulados desde o início do container.\n\n'
-  printf '| Container | Estado | Saúde | CPU | RAM (uso / limite) | RAM %% | NET I/O (RX / TX) | DISK I/O (leitura / escrita) | PIDs |\n'
-  printf '|---|---|---|---:|---:|---:|---:|---:|---:|\n'
   for name in "${names[@]}"; do
-    printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
-      "$name" "${states[$name]}" "${healths[$name]}" "${cpus[$name]:-—}" \
+    table_cells+=("$name" "${states[$name]}" "${healths[$name]}" "${cpus[$name]:-—}" \
       "${memories[$name]:-—}" "${memory_pcts[$name]:-—}" "${net_ios[$name]:-—}" \
-      "${block_ios[$name]:-—}" "${pids[$name]:-—}"
+      "${block_ios[$name]:-—}" "${pids[$name]:-—}")
   done
+  status_table "${table_cells[@]}"
 }
 
 ports() {
