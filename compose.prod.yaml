@@ -88,6 +88,10 @@ services:
 
   intranet-website:
     image: wordpress:php8.3-apache
+    command:
+      - /bin/sh
+      - -ec
+      - php /opt/intranet-download/prepare.php; exec docker-entrypoint.sh apache2-foreground
     restart: unless-stopped
     depends_on: [mysql-db]
     environment:
@@ -100,6 +104,8 @@ services:
       - type: bind
         source: ${WORDPRESS_INTRANET_PATH:?Set WORDPRESS_INTRANET_PATH in olympus/.env}
         target: /var/www/html
+      - ./wordpress/prepare-intranet-download.php:/opt/intranet-download/prepare.php:ro
+      - ./wordpress/intranet-backup-download.php:/var/www/html/wp-content/mu-plugins/intranet-backup-download.php:ro
     networks: [backend, edge]
 
   laras2026-website:
