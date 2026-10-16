@@ -31,9 +31,9 @@ services:
     restart: unless-stopped
     networks: [backend, edge]
 
-  escuta-website:
-    build: {context: ../escuta-website}
-    env_file: [../escuta-website/.env]
+  escuta:
+    build: {context: ../escuta}
+    env_file: [../escuta/.env]
     depends_on: [postgres-db]
     restart: unless-stopped
     networks: [backend, edge]

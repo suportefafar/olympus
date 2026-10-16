@@ -57,6 +57,22 @@ The first `up` prepares missing checkouts from `apps.tsv` and the reverse proxy,
 Compose and repository inventory are initial migration choices based on `current-infra/services-infra`. Review service-specific database variables, health checks, secrets, proxy routes, and data migration before production use. The legacy stack combines application configuration in one root `.env`; this orchestrator deliberately does not carry that file forward.
 
 
+## Escuta project rename
+
+Escuta now uses `git@github.com:suportefafar/escuta.git`, the `escuta/` checkout,
+and the `escuta` Compose service. `up escuta` (including remote production)
+migrates an existing clean `escuta-website/` checkout before preparing the app,
+preserving its private env files, configuration and attachments. Python 3 is
+required for this one-time transition. The command refuses conflicting paths,
+uncommitted legacy changes, unexpected origins or duplicate override services.
+
+The same supported workflow updates the service and checkout paths in a private
+production override and keeps a mode-0600 backup. External legacy storage paths
+and database names remain intact. Rollback lookup also recognizes historical
+deployment records under the old service name. The cleanup overlay keeps the
+retired service names disabled. Deploy the app, Olympus and reverse-proxy
+revisions together through `olymctl prod --remote up escuta`.
+
 ## Current checkout readiness
 
 The verified app repositories are checked out beside Olympus. The Rails intranet runs only in development at `intranet-stage.farmacia.local`; the existing `intranet.farmacia.ufmg.br` route remains on legacy WordPress. The app manifest supports an optional environment scope for applications that are not deployed everywhere. No deployable institutional repository origin was found in the supplied inventory. The institutional and Intranet WordPress sites are provided by the Compose overlays using operator-supplied content paths and database credentials.

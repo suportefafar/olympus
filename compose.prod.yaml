@@ -119,9 +119,9 @@ services:
     environment:
       ALLOWED_NETWORKS: ${CRONOS_ALLOWED_NETWORKS:?Set CRONOS_ALLOWED_NETWORKS in olympus/.env}
 
-  escuta-website:
+  escuta:
     volumes:
-      - ../escuta-website/storage:/rails/storage
+      - ../escuta/storage:/rails/storage
 
   hermes:
     volumes:

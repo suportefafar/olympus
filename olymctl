@@ -364,7 +364,7 @@ record() {
 }
 previous_deployment() {
   local env="$1" app="$2" current="$3"
-  awk -F '\t' -v e="$env" -v a="$app" -v c="$current" '$3==e && $5==a && $4=="up" && $8 ~ /^success/ {items[++n]=$7} END {for (i=n;i>=1;i--) if (items[i]==c) {if (i>1) print items[i-1]; exit}}' "$HISTORY" 2>/dev/null
+  awk -F '\t' -v e="$env" -v a="$app" -v c="$current" '$3==e && ($5==a || (a=="escuta" && $5=="escuta-website")) && $4=="up" && $8 ~ /^success/ {items[++n]=$7} END {for (i=n;i>=1;i--) if (items[i]==c) {if (i>1) print items[i-1]; exit}}' "$HISTORY" 2>/dev/null
 }
 compose_app_services() {
   local app="$1" service
@@ -407,12 +407,24 @@ up() {
   ensure_dev_hosts
   SELECTED=(); local -a chosen=()
   if [[ -n "$app_filter" ]]; then chosen=("$app_filter"); else mapfile -t chosen < <(apps); fi
+  # Escuta's service rename must deploy the matching proxy routes together.
+  if [[ "$app_filter" == escuta ]]; then
+    read_app reverse-proxy || fail "Missing reverse-proxy application."
+    prepare_git reverse-proxy "$APP_URL" "" "" "$no_pull"
+    prepare_app_env reverse-proxy
+  fi
   local -a affected=()
   declare -A previous_sha=() deployed_sha=()
   for app in "${chosen[@]}"; do
     read_app "$app" || fail "Unknown application '$app'."
     app_enabled_in_environment || fail "'$app' is not enabled in $env."
     [[ -n "$app_filter" || ( -z "$branch" && -z "$commit" ) ]] || fail "--branch and --commit require an individual application up."
+    if [[ "$app" == escuta ]]; then
+      need python3
+      local -a rename_arguments=(--workspace "$WORKSPACE")
+      [[ "$env" != prod ]] || rename_arguments+=(--production-override "$ROOT/compose.prod.local.yaml")
+      python3 "$ROOT/scripts/migrate-escuta-name.py" "${rename_arguments[@]}" || fail "Could not migrate the Escuta checkout."
+    fi
     dir="$(repo_dir "$app")"; old="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
     prepare_git "$app" "$APP_URL" "$branch" "$commit" "$no_pull"
     prepare_app_env "$app"

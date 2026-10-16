@@ -4,3 +4,4 @@ state/
 *.tmp
 compose.prod.local.yaml
 production/
+/.escuta-override-*

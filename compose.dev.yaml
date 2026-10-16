@@ -164,9 +164,9 @@ services:
         target: /var/www/html
     networks: [backend, edge]
 
-  escuta-website:
+  escuta:
     build:
-      context: ../escuta-website
+      context: ../escuta
       dockerfile: Dockerfile.dev
     command:
       - bash
@@ -179,16 +179,16 @@ services:
         exec ./bin/thrust ./bin/rails server
     volumes:
       - type: bind
-        source: ../escuta-website/app
+        source: ../escuta/app
         target: /rails/app
       - type: bind
-        source: ../escuta-website/config
+        source: ../escuta/config
         target: /rails/config
       - type: bind
-        source: ../escuta-website/lib
+        source: ../escuta/lib
         target: /rails/lib
       - type: bind
-        source: ../escuta-website/public
+        source: ../escuta/public
         target: /rails/public
 
 volumes:

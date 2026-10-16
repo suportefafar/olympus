@@ -4,7 +4,7 @@ Olympus coordinates the deployable FAFAR services with Docker Compose. Applicati
 
 - [Olympus operator guide](./olympus/README.md)
 - [Hermes](./hermes/README.md)
-- [Escuta](./escuta-website/README.md)
+- [Escuta](./escuta/README.md)
 - [ChatRapido](./chatrapido/README.md)
 - [Stagemanager](./stagemanager/README.md)
 - [Nodus](./nodus/README.md)
