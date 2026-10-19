@@ -7,7 +7,7 @@ Olympus is the portable Docker Compose orchestrator for FAFAR services. Its work
 The CLI follows the shape `olymctl <ambiente> [--remote] <comando> [flags]`. An environment selects the Compose stack; `--remote` runs the command on that environment's configured remote host. The same remote modifier is also accepted after the command for compatibility.
 
 ```sh
-olymctl dev up [app] [--no-pull] [--branch NAME] [--commit SHA]
+olymctl dev up [app|reverse-proxy|postgres-db|mongo-db|mysql-db] [--no-pull] [--branch NAME] [--commit SHA]
 olymctl prod up [app] [--no-pull] [--branch NAME] [--commit SHA]
 olymctl prod up --prepare-only
 olymctl prod rollback APP [--commit SHA]
@@ -23,6 +23,9 @@ olymctl prod --remote ports
 olymctl history
 olymctl down dev|prod [app]
 ```
+
+In dev, `olymctl dev up postgres-db`, `olymctl dev up mongo-db` and `olymctl dev up mysql-db` start an individual database service without changing app checkouts.
+`reverse-proxy` is also available as an app target: `olymctl dev up reverse-proxy --no-pull`.
 
 The remote production endpoint is currently hardcoded in `olymctl` as `root@150.164.110.1:10022`. Configure the SSH key locally, matching that host in `~/.ssh/config`:
 
@@ -75,7 +78,7 @@ revisions together through `olymctl prod --remote up escuta`.
 
 ## Current checkout readiness
 
-The verified app repositories are checked out beside Olympus. The Rails intranet runs only in development at `intranet-stage.farmacia.local`; the existing `intranet.farmacia.ufmg.br` route remains on legacy WordPress. The app manifest supports an optional environment scope for applications that are not deployed everywhere. No deployable institutional repository origin was found in the supplied inventory. The institutional and Intranet WordPress sites are provided by the Compose overlays using operator-supplied content paths and database credentials.
+The verified app repositories are checked out beside Olympus. The Rails intranet runs only in development at `intranet-stage.farmacia.local`; the development WordPress intranet uses `intranet.farmacia.local`; the existing `intranet.farmacia.ufmg.br` route remains on legacy WordPress. The app manifest supports an optional environment scope for applications that are not deployed everywhere. No deployable institutional repository origin was found in the supplied inventory. The institutional and Intranet WordPress sites are provided by the Compose overlays using operator-supplied content paths and database credentials.
 
 Every runnable app has a root `.env.example`, a local ignored `.env`, and build-context exclusions for env files and private key material. Replace `__REQUIRED__` entries with operator-provided values. Commit the reviewed templates and ignore rules in each application before a normal pull-enabled `up`; use `--no-pull` to run the local configuration while it remains uncommitted. Do not use the legacy WordPress database volume with the new stack until its backup and migration are planned.
 
@@ -98,3 +101,7 @@ The dev override publishes Dike on `127.0.0.1:3002` and PostgreSQL/MySQL/MongoDB
 The production definitions are present, but the services have not been deployed. Before the first production `up`, create `nodus/.env.production` from its example, set `SECRET_KEY_BASE` and a provider API key. Create `ciclum/.env.production` from its example and set `RAILS_MASTER_KEY` from the Ciclum credentials key. Both services use `POSTGRES_USER` and `POSTGRES_PASSWORD` from the private `olympus/.env`. Do not commit the app production files.
 
 Confirm DNS for both domains points to the production proxy and that the installed TLS certificate covers both names. Review whether Nodus has existing data to migrate into its databases on the shared PostgreSQL server. Back up the shared `postgres-data` volume, `nodus-storage`, and `ciclum-storage` with the other production data.
+
+## Athenas
+
+O app `athenas` está registrado em desenvolvimento e produção, nos domínios `athenas.farmacia.local` e `athenas.farmacia.ufmg.br`. Use `olymctl dev up athenas --no-pull` para iniciar localmente e `olymctl prod --remote up athenas` para publicar. O grupo inclui web/worker/Ollama e inicializadores idempotentes de banco/modelo. Ele compartilha `postgres-db` com banco separado e storage persistente; os overlays instalam pgvector no PostgreSQL 17. Antes do primeiro deploy, configure `athenas/.env` no servidor a partir de `.env.production.example`, incluindo segredo Rails, administrador inicial e SMTP. Consulte [preparação local](docs/DEV-ENVIRONMENT.md#athenas), o [README do Athenas](../athenas/README.md) e o [guia de migração de produção](docs/PRODUCTION-MIGRATION.md).

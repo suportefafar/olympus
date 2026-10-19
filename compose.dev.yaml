@@ -1,7 +1,38 @@
+x-athenas-environment: &athenas-environment
+  RAILS_ENV: development
+  # Override standalone URLs from the bind-mounted .env. Credentials
+  # are supplied separately through the shared PG fields below.
+  DATABASE_URL: postgresql://postgres-db:5432/athenas_development
+  TEST_DATABASE_URL: postgresql://postgres-db:5432/athenas_test
+  POSTGRES_HOST: postgres-db
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
+  APP_BASE_URL: http://athenas.farmacia.local
+  OLLAMA_BASE_URL: http://athenas-ollama:11434
+  JOB_CONCURRENCY: "1"
+x-athenas-app: &athenas-app
+  image: olympus-athenas
+  build: {context: ../athenas}
+  env_file: [../athenas/.env]
+  environment: *athenas-environment
+  volumes:
+    # Share the complete development checkout, including uploads and mail.
+    # Gems and the LibreOffice profile stay in the image outside /rails.
+    - ../athenas:/rails
+  profiles: [dev]
+  init: true
+
 services:
   postgres-db:
+    # PostgreSQL 17, same persistent data directory, with vector binaries installed.
+    image: olympus-postgres-pgvector:17
+    build: {context: ./postgres}
     ports:
       - "127.0.0.1:5432:5432"
+    networks:
+      - backend
+      - postgres-host
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\""]
       interval: 5s
@@ -11,16 +42,21 @@ services:
   mongo-db:
     ports:
       - "127.0.0.1:27017:27017"
+    networks:
+      - backend
+      - mongo-host
 
   dike:
     ports:
       - "127.0.0.1:3002:3002"
+    volumes: [../dike:/app]
 
   hermes:
     # Dev does not need the in-process mail worker; keeping it disabled lets
     # the web process stay available while mail delivery remains mocked.
     environment:
       SOLID_QUEUE_IN_PUMA: ""
+    volumes: [../hermes:/rails]
 
   intranet:
     build:
@@ -35,7 +71,94 @@ services:
       INTRANET_PUBLIC_BASE_URL: http://intranet-stage.farmacia.local
       HERMES_API_URL: http://hermes:80
     volumes:
-      - ../intranet/storage:/rails/storage
+      # Development runs directly from the complete Rails checkout.
+      - ../intranet:/rails
+
+  wordpress-sync:
+    image: olympus-intranet
+    restart: unless-stopped
+    command: ["./bin/wordpress-sync"]
+    env_file: [../intranet/.env.wordpress-sync]
+    environment:
+      RAILS_ENV: development
+      INTRANET_DATABASE_HOST: postgres-db
+      INTRANET_DATABASE_PORT: "5432"
+      WP_SYNC_MYSQL_HOST: mysql-db
+      WP_SYNC_WORDPRESS_PATH: /wordpress
+    depends_on: [intranet, intranet-website, postgres-db, mysql-db]
+    volumes:
+      - ../intranet:/rails
+      - ../intranet-website/html:/wordpress:ro
+      - ../intranet/storage/wordpress-photos:/rails/storage/wordpress-photos
+    networks: [backend]
+    stop_grace_period: 45s
+
+  athenas:
+    <<: *athenas-app
+    depends_on:
+      athenas-setup:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks: [backend, edge]
+    healthcheck:
+      test: ["CMD", "ruby", "-rbundler/setup", "-rnet/http", "-rpg", "-e", "db = PG.connect(host: ENV.fetch(\"POSTGRES_HOST\"), port: ENV.fetch(\"POSTGRES_PORT\"), user: ENV.fetch(\"POSTGRES_USER\"), password: ENV.fetch(\"POSTGRES_PASSWORD\"), dbname: \"athenas_development\", connect_timeout: 2); db.exec(\"SELECT 1\"); db.close; exit(Net::HTTP.get_response(URI(\"http://localhost:3000/session/new\")).code == \"200\" ? 0 : 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  athenas-worker:
+    <<: *athenas-app
+    command: ["bin/jobs"]
+    depends_on:
+      athenas-setup:
+        condition: service_completed_successfully
+      athenas-model-setup:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks: [backend]
+    mem_limit: 2g
+    cpus: 2
+
+  athenas-setup:
+    <<: *athenas-app
+    command: ["bin/olympus-setup"]
+    labels:
+      olympus.lifecycle: oneshot
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    restart: "no"
+    networks: [backend]
+
+  athenas-ollama:
+    image: ollama/ollama:0.13.5
+    profiles: [dev]
+    restart: unless-stopped
+    volumes: [athenas-ollama-data:/root/.ollama]
+    networks: [backend, athenas-egress]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  athenas-model-setup:
+    image: ollama/ollama:0.13.5
+    profiles: [dev]
+    env_file: [../athenas/.env]
+    environment:
+      OLLAMA_HOST: http://athenas-ollama:11434
+    entrypoint: ["sh", "-c", "model=$${EMBEDDING_MODEL:-bge-m3}; ollama show \"$$model\" >/dev/null 2>&1 || exec ollama pull \"$$model\""]
+    command: []
+    labels:
+      olympus.lifecycle: oneshot
+    depends_on:
+      athenas-ollama:
+        condition: service_healthy
+    restart: "no"
+    networks: [backend]
 
   nodus-api:
     build:
@@ -55,12 +178,7 @@ services:
       postgres-db:
         condition: service_healthy
     volumes:
-      - ../nodus/app:/rails/app
-      - ../nodus/config:/rails/config
-      - ../nodus/db:/rails/db
-      - ../nodus/lib:/rails/lib
-      - ../nodus/log:/rails/log
-      - ../nodus/storage:/rails/storage
+      - ../nodus:/rails
     restart: unless-stopped
     networks: [backend, edge]
 
@@ -99,12 +217,7 @@ services:
       design-system:
         condition: service_started
     volumes:
-      - ../ciclum/app:/rails/app
-      - ../ciclum/config:/rails/config
-      - ../ciclum/db:/rails/db
-      - ../ciclum/lib:/rails/lib
-      - ../ciclum/log:/rails/log
-      - ../ciclum/storage:/rails/storage
+      - ../ciclum:/rails
     restart: unless-stopped
     networks: [backend, edge]
 
@@ -119,9 +232,16 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-mysql-root-2026}
     volumes:
       - mysql-data:/var/lib/mysql
-    networks: [backend]
+    networks:
+      - backend
+      - mysql-host
+
+  laras2026-website:
+    image: nginx:alpine
+    volumes: [../laras2026-website:/usr/share/nginx/html:ro]
 
   cronos:
+    volumes: [../cronos:/app]
     environment:
       # Permit HTTP requests from the Olympus dev edge network.
       ALLOWED_NETWORKS: 172.24.0.0/16
@@ -140,27 +260,33 @@ services:
         define( 'WP_SITEURL', 'http://farmacia.local' );
         define( 'WP_ENVIRONMENT_TYPE', 'development' );
     volumes:
+      - ../institutional-website:/workspace/institutional-website:ro
       - type: bind
-        source: ../../services-infra/institutional-website/html
+        source: ../institutional-website/html
         target: /var/www/html
     networks: [backend, edge]
 
   intranet-website:
     image: wordpress:php8.3-apache
     depends_on: [mysql-db]
+    env_file: [../intranet/.env.wordpress-sync]
+    ports: ["127.0.0.1:8002:80"]
     environment:
       WORDPRESS_DB_HOST: mysql-db:3306
-      WORDPRESS_DB_USER: ${MYSQL_USER:-local-wp}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-local-mysql-2026}
       WORDPRESS_DB_NAME: intranet
       WORDPRESS_DEBUG: "1"
       WORDPRESS_CONFIG_EXTRA: |
         define( 'WP_HOME', 'http://intranet.farmacia.local' );
         define( 'WP_SITEURL', 'http://intranet.farmacia.local' );
         define( 'WP_ENVIRONMENT_TYPE', 'development' );
+        define( 'DISABLE_WP_CRON', true );
     volumes:
+      - ../intranet/deploy/wordpress-uploads.ini:/usr/local/etc/php/conf.d/intranet-uploads.ini:ro
+      - ../intranet/deploy/wordpress-uploads.conf:/etc/apache2/conf-enabled/intranet-uploads.conf:ro
+      - ../intranet/deploy/wordpress-sync-import.php:/var/www/html/wp-content/mu-plugins/intranet-wordpress-sync.php:ro
+      - ../intranet-website:/workspace/intranet-website:ro
       - type: bind
-        source: ../../services-infra/intranet-website/html
+        source: ../intranet-website/html
         target: /var/www/html
     networks: [backend, edge]
 
@@ -178,19 +304,38 @@ services:
         trap 'kill "$$css_pid" 2>/dev/null || true' TERM INT EXIT
         exec ./bin/thrust ./bin/rails server
     volumes:
-      - type: bind
-        source: ../escuta/app
-        target: /rails/app
-      - type: bind
-        source: ../escuta/config
-        target: /rails/config
-      - type: bind
-        source: ../escuta/lib
-        target: /rails/lib
-      - type: bind
-        source: ../escuta/public
-        target: /rails/public
+      - ../escuta:/rails
+
+  chatrapido:
+    volumes: [../chatrapido:/rails]
+
+  stagemanager:
+    volumes: [../stagemanager:/rails]
+
+  temis:
+    volumes:
+      - ../temis:/usr/app
+      - temis-node-modules:/usr/app/node_modules
+
+  prometheus-bot:
+    command: ["sh", "-lc", "npm run build && exec ./node_modules/.bin/nodemon --watch src --ext js --exec \"npm run build && node build/index.js\""]
+    volumes:
+      - ../prometheus-bot:/app
+      - prometheus-bot-node-modules:/app/node_modules
+
+  design-system:
+    volumes: [../design-system:/workspace/design-system:ro]
 
 volumes:
   mysql-data:
   nodus-client-node-modules:
+  temis-node-modules:
+  prometheus-bot-node-modules:
+  athenas-ollama-data:
+    name: athenas_ollama
+
+networks:
+  athenas-egress: {}
+  postgres-host: {}
+  mongo-host: {}
+  mysql-host: {}

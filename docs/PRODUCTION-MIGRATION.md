@@ -84,4 +84,7 @@ Os dois serviços foram adicionados ao manifesto e ao proxy de produção, mas a
 
 Antes de iniciar qualquer um deles, provisionar no servidor `nodus/.env.production` e `ciclum/.env.production` a partir dos exemplos, confirmar `POSTGRES_USER` e `POSTGRES_PASSWORD` no `olympus/.env`, configurar as chaves dos provedores de IA e a chave Rails do Ciclum, verificar DNS e SANs do certificado TLS, e decidir se há dados do Nodus que precisam ser migrados. Esses arquivos são privados e não devem ser commitados. No primeiro início, Rails prepara os bancos de cada aplicação no serviço PostgreSQL compartilhado; os volumes de storage guardam uploads.
 
-A configuração local ainda precisa ser commitada e enviada para os repositórios antes de qualquer `olymctl prod --remote up`. Nenhum comando de deploy foi executado nesta preparação.
+As alterações de preparação de Nodus e Ciclum ainda precisam ser commitadas e publicadas antes de um deploy desses serviços. Esta nota não cobre a implantação do Athenas descrita abaixo.
+### Athenas
+
+O Athenas atende `athenas.farmacia.ufmg.br` pelo proxy de produção e usa o PostgreSQL compartilhado com pgvector, além de volumes próprios para uploads e modelo Ollama. Antes da primeira inicialização, configure `athenas/.env` no servidor a partir de `.env.production.example`; mantenha `SECRET_KEY_BASE`, credenciais do administrador e SMTP fora do Git. Verifique espaço em disco e memória para o modelo local `bge-m3` e o worker de extração. O domínio resolve para o proxy e o certificado TLS instalado cobre o hostname.

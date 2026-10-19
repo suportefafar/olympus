@@ -5,3 +5,5 @@ state/
 compose.prod.local.yaml
 production/
 /.escuta-override-*
+
+__pycache__/

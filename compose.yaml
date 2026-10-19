@@ -80,9 +80,7 @@ services:
     networks: [edge]
 
   laras2026-website:
-    image: nginx:alpine
     env_file: [../laras2026-website/.env]
-    volumes: [../laras2026-website:/usr/share/nginx/html:ro]
     restart: unless-stopped
     networks: [edge]
 
