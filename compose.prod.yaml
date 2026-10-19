@@ -39,6 +39,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
       APP_BASE_URL: https://athenas.farmacia.ufmg.br
+      HERMES_API_URL: http://hermes:80
       OLLAMA_BASE_URL: http://athenas-ollama:11434
       JOB_CONCURRENCY: "1"
     volumes:
@@ -205,6 +206,14 @@ services:
       - ../escuta/storage:/rails/storage
 
   hermes:
+    environment:
+      RAILS_ENV: production
+      PORT: "80"
+      RAILS_MAX_THREADS: 3
+      POSTGRES_HOST: postgres-db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
     volumes:
       - ../hermes/storage:/rails/storage
 
