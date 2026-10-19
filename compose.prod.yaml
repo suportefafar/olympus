@@ -210,6 +210,7 @@ services:
       RAILS_ENV: production
       PORT: "80"
       RAILS_MAX_THREADS: 3
+      DB_POOL: "8"
       POSTGRES_HOST: postgres-db
       POSTGRES_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
