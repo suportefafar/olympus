@@ -112,7 +112,7 @@ prepare_app_env() {
   [[ "$app" != reverse-proxy ]] || dockerignore="$dir/web-server/.dockerignore"
   [[ -d "$dir/.git" ]] || fail "Missing checkout for '$app' at $dir"
   [[ -f "$env" ]] || {
-    if [[ -f "$example" ]]; then cp -- "$example" "$env"; chmod 600 "$env"; info "Created $app/.env from .env.example; review placeholders before startup.";
+    if [[ -f "$example" ]]; then cp -- "$example" "$env"; chmod 600 "$env"; info "Created $app/.env from $(basename -- "$example"); review placeholders before startup.";
     elif [[ "$APP_ENV_REQUIRED" == true ]]; then fail "'$app' has no .env or .env.example. Add a reviewed template, then retry.";
     else return 0; fi
   }
