@@ -98,6 +98,8 @@ services:
     depends_on:
       athenas-setup:
         condition: service_completed_successfully
+      design-system:
+        condition: service_started
     restart: unless-stopped
     networks: [backend, edge]
     healthcheck:
