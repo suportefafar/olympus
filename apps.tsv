@@ -14,4 +14,6 @@ laras2026-website	git@github.com:suportefafar/laras2026-website.git	laras2026-we
 cronos	git@github.com:suportefafar/cronos.git	cronos	cronos.farmacia.ufmg.br,cronos.farmacia.local	true
 athenas	git@github.com:suportefafar/athenas.git	athenas,athenas-worker,athenas-ollama,athenas-model-setup,athenas-setup	athenas.farmacia.ufmg.br,athenas.farmacia.local	true
 reverse-proxy	git@github.com:suportefafar/reverse-proxy.git	reverse-proxy	-	true
-# Not enabled: institutional has no verified independent repository origin or deployable source checkout.
+institutional-website	-	institutional-website	-	false	prod
+intranet-website	-	intranet-website	-	false	prod
+# WordPress content is bind-mounted and has no independent Git checkout.
