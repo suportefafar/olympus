@@ -1,6 +1,13 @@
 # Retired services must stay disabled even if a server-local override still
 # contains an older definition.
 services:
+  # Keep the patched image selected after any server-local Compose override.
+  institutional-website:
+    image: olympus-wordpress-php8.3.36
+    pull_policy: build
+  intranet-website:
+    image: olympus-wordpress-php8.3.36
+    pull_policy: build
   escuta-website: !reset null
   escuta-wp: !reset null
   escuta-website-wp: !reset null

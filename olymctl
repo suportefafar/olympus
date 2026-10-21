@@ -421,7 +421,7 @@ prepare_git() {
 }
 
 up() {
-  local env="$1" app_filter="${2:-}" no_pull="$3" branch="$4" commit="$5" prepare_only="${6:-false}" app url services domains required dir old sha id= status=success failed=0
+  local env="$1" app_filter="${2:-}" no_pull="$3" branch="$4" commit="$5" prepare_only="${6:-false}" app service url services domains required dir old sha id= status=success failed=0
   ENVIRONMENT="$env"; check_prerequisites; [[ -f "$ENVFILE" ]] || { [[ -f "$ROOT/.env.example" ]] || fail "Missing Olympus .env.example"; cp -- "$ROOT/.env.example" "$ENVFILE"; chmod 600 "$ENVFILE"; info "Created olympus/.env from .env.example; configure its database credentials."; }
   validate_olympus_env
   copy_workspace_readme
@@ -481,10 +481,13 @@ up() {
   if [[ "$failed" == 0 && "$env" == prod ]]; then
     for app in "${chosen[@]}"; do
       if is_production_wordpress "$app"; then
-        if ! "${COMPOSE[@]}" exec -T "$app" php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 && PHP_VERSION_ID >= 80336 ? 0 : 1);'; then
-          info "The deployed $app container did not report patched PHP 8.3."
-          status=failed; failed=1
-        fi
+        for service in institutional-website intranet-website; do
+          if ! "${COMPOSE[@]}" exec -T "$service" php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 && PHP_VERSION_ID >= 80336 ? 0 : 1);'; then
+            info "The deployed $service container did not report patched PHP 8.3."
+            status=failed; failed=1
+          fi
+        done
+        break
       fi
     done
   fi
