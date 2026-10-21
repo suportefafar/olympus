@@ -387,9 +387,10 @@ check_wordpress_php() {
   ' || fail "Refusing to deploy WordPress with an unpatched PHP image."
 }
 prepare_wordpress_image() {
-  info "Pulling and checking the WordPress PHP 8.3 image before deployment."
-  docker pull wordpress:php8.3-apache || fail "Could not pull the WordPress image."
-  check_wordpress_php wordpress:php8.3-apache
+  info "Building and checking WordPress with patched PHP 8.3 before deployment."
+  docker build --pull -t olympus-wordpress-php8.3.36 -f "$ROOT/wordpress/Dockerfile.php8.3.36" "$ROOT/wordpress" || fail "Could not build the patched WordPress image."
+  check_wordpress_php olympus-wordpress-php8.3.36
+  docker run --rm --entrypoint apache2ctl olympus-wordpress-php8.3.36 -t || fail "The patched WordPress Apache configuration is invalid."
 }
 prepare_git() {
   local app="$1" url="$2" dir branch="$3" commit="$4" no_pull="$5" old="" target=""

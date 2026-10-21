@@ -1,0 +1,12 @@
+# The WordPress image provides its Apache configuration, entrypoint and extensions.
+# Both upstream images use Debian trixie and the PHP 8.3 extension ABI.
+FROM php:8.3.36-apache@sha256:4aed5d62fe32801afa58b3d18c26b12aa86f25da27526c128cce99e63a38a4b0 AS patched-php
+FROM wordpress:php8.3-apache@sha256:e4447d68aa14a2965d76a28d8276d8485d7f45904271dcff77466e8713882a47
+
+COPY --from=patched-php /usr/local/bin/php /usr/local/bin/php
+COPY --from=patched-php /usr/lib/apache2/modules/libphp.so /usr/lib/apache2/modules/libphp.so
+COPY --from=patched-php /usr/local/lib/php/extensions/no-debug-non-zts-20230831/opcache.so /usr/local/lib/php/extensions/no-debug-non-zts-20230831/opcache.so
+
+RUN php -r 'exit(PHP_VERSION_ID === 80336 ? 0 : 1);' \
+    && apache2ctl -t \
+    && php -r 'foreach (["bcmath", "exif", "gd", "imagick", "intl", "mysqli", "zip"] as $extension) { if (!extension_loaded($extension)) { fwrite(STDERR, "$extension missing\n"); exit(1); } }'

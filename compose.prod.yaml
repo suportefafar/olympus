@@ -155,7 +155,10 @@ services:
     networks: [backend]
 
   institutional-website:
-    image: wordpress:php8.3-apache
+    image: olympus-wordpress-php8.3.36
+    build:
+      context: ./wordpress
+      dockerfile: Dockerfile.php8.3.36
     restart: unless-stopped
     depends_on: [mysql-db]
     environment:
@@ -171,7 +174,10 @@ services:
     networks: [backend, edge]
 
   intranet-website:
-    image: wordpress:php8.3-apache
+    image: olympus-wordpress-php8.3.36
+    build:
+      context: ./wordpress
+      dockerfile: Dockerfile.php8.3.36
     command:
       - /bin/sh
       - -ec
