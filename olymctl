@@ -95,6 +95,23 @@ docker exec nextcloud-app php -r 'exit(PHP_VERSION_ID === 80512 ? 0 : 1);'
 docker exec nextcloud-app apache2ctl -M 2>/dev/null | grep -q 'php_module'
 curl -fsS --max-time 10 http://127.0.0.1:8080/status.php >/dev/null
 echo '[INFO] Nextcloud app is healthy and runs PHP 8.5.12.'
+readme=/root/README.md
+old_readme=/root/README.before-nextcloud.md
+managed_readme="$repo/README.md"
+# The host's previous README was an unrelated generic Python note. Keep a
+# recoverable copy, and make the host entry point follow the reviewed checkout.
+if [[ -L "$readme" ]]; then
+  [[ "$(readlink -f -- "$readme")" == "$managed_readme" ]] || echo '[WARN] /root/README.md points elsewhere; leaving it unchanged.' >&2
+elif [[ -f "$readme" && "$(sha256sum "$readme" | cut -d ' ' -f 1)" == 6e8adf08bd2363be19fe3c30e7a9bad155d245d5b3f24e0b188f7137b2697f4e && ! -e "$old_readme" ]]; then
+  mv -- "$readme" "$old_readme"
+  ln -s -- "$managed_readme" "$readme"
+  echo '[INFO] Archived the former root README and linked the reviewed Nextcloud guide.'
+elif [[ ! -e "$readme" ]]; then
+  ln -s -- "$managed_readme" "$readme"
+  echo '[INFO] Linked the reviewed Nextcloud guide at /root/README.md.'
+else
+  echo '[WARN] /root/README.md is not the expected note; leaving it unchanged.' >&2
+fi
 REMOTE_NEXTCLOUD
 }
 compose_files() {
