@@ -69,21 +69,19 @@ run_remote_nextcloud() {
   git -C "$cloud_dir" merge-base --is-ancestor HEAD origin/main || fail "Push the Cloud commit before deploying."
   cloud_commit="$(git -C "$cloud_dir" rev-parse HEAD)"
   info "Deploying Nextcloud on root@150.164.110.10 from Cloud commit ${cloud_commit:0:12}"
+  ssh -T -o BatchMode=yes root@150.164.110.10 'if [ ! -e /root/cloud-security-deploy ]; then git clone --no-hardlinks /root/cloud /root/cloud-security-deploy; fi; test -d /root/cloud-security-deploy/.git' || fail "Could not prepare the separate Cloud checkout."
+  git -C "$cloud_dir" push ssh://root@150.164.110.10/root/cloud-security-deploy "$cloud_commit:refs/heads/security-update" || fail "Could not transfer the pushed Cloud commit to the server."
   ssh -T -o BatchMode=yes root@150.164.110.10 "bash -se -- $cloud_commit" <<'REMOTE_NEXTCLOUD'
 set -Eeuo pipefail
 expected_commit="$1"
 repo=/root/cloud-security-deploy
 live=/root/cloud/nextcloud-deploy
 image=fafar-nextcloud-php8.5.12:2026-10-21
-if [[ ! -e "$repo" ]]; then
-  git clone https://github.com/suportefafar/cloud.git "$repo"
-fi
 [[ -d "$repo/.git" ]] || { echo '[ERROR] Security checkout path is not a Git repository.' >&2; exit 1; }
 [[ -z "$(git -C "$repo" status --porcelain)" ]] || { echo '[ERROR] Security checkout has local changes.' >&2; exit 1; }
-git -C "$repo" fetch origin main
-[[ "$(git -C "$repo" rev-parse origin/main)" == "$expected_commit" ]] || { echo '[ERROR] Cloud main changed after local review.' >&2; exit 1; }
-git -C "$repo" merge-base --is-ancestor HEAD origin/main || { echo '[ERROR] Security checkout has unpushed commits.' >&2; exit 1; }
-git -C "$repo" switch --force-create main origin/main
+[[ "$(git -C "$repo" rev-parse security-update)" == "$expected_commit" ]] || { echo '[ERROR] Transferred Cloud commit does not match local review.' >&2; exit 1; }
+git -C "$repo" merge-base --is-ancestor HEAD security-update || { echo '[ERROR] Security checkout has divergent commits.' >&2; exit 1; }
+git -C "$repo" switch --force-create main security-update
 [[ -f "$live/docker-compose.yml" && -f "$live/.env" ]] || { echo '[ERROR] Existing Nextcloud deployment is missing.' >&2; exit 1; }
 docker inspect nextcloud-app >/dev/null
 docker build --pull -t "$image" -f "$repo/nextcloud-deploy/Dockerfile.php8.5.12" "$repo/nextcloud-deploy"

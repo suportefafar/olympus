@@ -89,6 +89,8 @@ Every runnable app has a root `.env.example`, a local ignored `.env`, and build-
 The separate Nextcloud host is updated with `./olymctl prod --remote up nextcloud`.
 This command uses the pushed `cloud` repository to build a PHP 8.5.12 image,
 then applies its versioned Compose overlay to the existing Nextcloud stack.
+It transfers the reviewed commit to a separate Git checkout over SSH because
+the Nextcloud host has no GitHub credentials.
 It leaves the production Cloud checkout and its local changes untouched and
 checks the app health and PHP version after the update.
 
