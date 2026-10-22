@@ -86,6 +86,12 @@ Every runnable app has a root `.env.example`, a local ignored `.env`, and build-
 
 ## Production server overrides
 
+The separate Nextcloud host is updated with `./olymctl prod --remote up nextcloud`.
+This command uses the pushed `cloud` repository to build a PHP 8.5.12 image,
+then applies its versioned Compose overlay to the existing Nextcloud stack.
+It leaves the production Cloud checkout and its local changes untouched and
+checks the app health and PHP version after the update.
+
 `olymctl prod` also loads `compose.prod.local.yaml` when present. This file is ignored by Git and may contain server-specific paths, imported runtime configuration and database image versions. Keep it mode 0600 and back it up with the server secrets. The `production/` directory is also private to the server.
 
 Olympus is an orchestrator and has no container of its own. It brings together the application, database, and reverse-proxy services. The Caddy Compose fragments, Docker build, routes, TLS settings, and access logs live in the sibling `reverse-proxy/` repository. `olymctl` includes that repository's `compose.olympus.yaml` and environment overlay in the same Compose project so Caddy can reach application containers over the shared `edge` network. The proxy repository owns its TLS certificate path in `reverse-proxy/.env`.
