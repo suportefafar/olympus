@@ -117,7 +117,7 @@ REMOTE_NEXTCLOUD
 run_remote_ai_ssh() {
   local script="$ROOT/scripts/configure-ai-ssh-8085.sh" head remote_tip
   need git; need ssh
-  [[ -z "$(git -C "$ROOT" status --porcelain)" ]] || fail 'Olympus has uncommitted changes.'
+  [[ -z "$(git -C "$ROOT" status --porcelain -- README.md olymctl scripts/configure-ai-ssh-8085.sh)" ]] || fail 'AI SSH deployment files have uncommitted changes.'
   [[ "$(git -C "$ROOT" branch --show-current)" == main ]] || fail 'Deploy from Olympus main.'
   git -C "$ROOT" fetch origin main || fail 'Could not fetch Olympus main.'
   head="$(git -C "$ROOT" rev-parse HEAD)"

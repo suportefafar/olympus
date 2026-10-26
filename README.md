@@ -38,7 +38,7 @@ Host 150.164.110.1
 
 The remote VM must have `olymctl` available on `PATH` (install it once from the server checkout with `sudo ./scripts/install-path.sh`). `status` and `ports` work for both `dev` and `prod` locally. Remote execution currently targets only production; `dev --remote` is not configured yet.
 
-`olymctl prod --remote configure-ai-ssh-8085` applies the reviewed SSH socket drop-in to `ai-ct-1` (`150.164.110.3`) after verifying the Olympus `main` checkout is clean and pushed. It keeps port 22 active, adds 8085, and verifies an SSH login on 8085. The host's `sshd_config` must already declare both ports.
+`olymctl prod --remote configure-ai-ssh-8085` applies the reviewed SSH socket drop-in to `ai-ct-1` (`150.164.110.3`) after verifying the deployment files are committed on pushed Olympus `main`. It keeps port 22 active, adds 8085, and verifies an SSH login on 8085. The host's `sshd_config` must already declare both ports.
 
 The CLI does not yet have a command to define remote environments. Adding remote environment configuration is a later step; for now the production user, host, and port stay hardcoded in the script, while the SSH key remains in the operator's SSH config.
 
