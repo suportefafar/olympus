@@ -6,7 +6,9 @@ FROM wordpress:php8.3-apache@sha256:e4447d68aa14a2965d76a28d8276d8485d7f45904271
 COPY --from=patched-php /usr/local/bin/php /usr/local/bin/php
 COPY --from=patched-php /usr/lib/apache2/modules/libphp.so /usr/lib/apache2/modules/libphp.so
 COPY --from=patched-php /usr/local/lib/php/extensions/no-debug-non-zts-20230831/opcache.so /usr/local/lib/php/extensions/no-debug-non-zts-20230831/opcache.so
+COPY disable-session-upload-progress.ini /usr/local/etc/php/conf.d/zz-disable-session-upload-progress.ini
 
 RUN php -r 'exit(PHP_VERSION_ID === 80336 ? 0 : 1);' \
+    && php -r 'exit(ini_get("session.upload_progress.enabled") === "0" ? 0 : 1);' \
     && apache2ctl -t \
     && php -r 'foreach (["bcmath", "exif", "gd", "imagick", "intl", "mysqli", "zip"] as $extension) { if (!extension_loaded($extension)) { fwrite(STDERR, "$extension missing\n"); exit(1); } }'

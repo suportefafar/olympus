@@ -85,16 +85,16 @@ git -C "$repo" switch --force-create main security-update
 [[ -f "$live/docker-compose.yml" && -f "$live/.env" ]] || { echo '[ERROR] Existing Nextcloud deployment is missing.' >&2; exit 1; }
 docker inspect nextcloud-app >/dev/null
 docker build --pull -t "$image" -f "$repo/nextcloud-deploy/Dockerfile.php8.5.12" "$repo/nextcloud-deploy"
-docker run --rm --entrypoint php "$image" -r 'exit(PHP_VERSION_ID === 80512 ? 0 : 1);'
+docker run --rm --entrypoint php "$image" -r 'exit(PHP_VERSION_ID === 80512 && ini_get("session.upload_progress.enabled") === "0" ? 0 : 1);'
 docker run --rm --entrypoint apache2ctl "$image" -t
 cd "$live"
 compose=(docker compose -p nextcloud-deploy --project-directory "$live" -f "$live/docker-compose.yml" -f "$repo/nextcloud-deploy/compose.php2shell.yaml")
 "${compose[@]}" config --quiet
 "${compose[@]}" up -d --no-deps --wait --wait-timeout 120 app
-docker exec nextcloud-app php -r 'exit(PHP_VERSION_ID === 80512 ? 0 : 1);'
+docker exec nextcloud-app php -r 'exit(PHP_VERSION_ID === 80512 && ini_get("session.upload_progress.enabled") === "0" ? 0 : 1);'
 docker exec nextcloud-app apache2ctl -M 2>/dev/null | grep -q 'php_module'
 curl -fsS --max-time 10 http://127.0.0.1:8080/status.php >/dev/null
-echo '[INFO] Nextcloud app is healthy and runs PHP 8.5.12.'
+echo '[INFO] Nextcloud app is healthy, runs PHP 8.5.12 and has session upload progress disabled.'
 readme=/root/README.md
 old_readme=/root/README.before-nextcloud.md
 managed_readme="$repo/README.md"
@@ -439,6 +439,10 @@ check_wordpress_php() {
       fwrite(STDERR, "PHP 8.3.36 or newer in the 8.3 series is required; found " . PHP_VERSION . "\n");
       exit(1);
     }
+    if (ini_get("session.upload_progress.enabled") !== "0") {
+      fwrite(STDERR, "Session upload progress must be disabled before request parsing.\n");
+      exit(1);
+    }
   ' || fail "Refusing to deploy WordPress with an unpatched PHP image."
 }
 prepare_wordpress_image() {
@@ -536,9 +540,14 @@ up() {
   if [[ "$failed" == 0 && "$env" == prod ]]; then
     for app in "${chosen[@]}"; do
       if is_production_wordpress "$app"; then
-        for service in institutional-website intranet-website; do
-          if ! "${COMPOSE[@]}" exec -T "$service" php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 && PHP_VERSION_ID >= 80336 ? 0 : 1);'; then
-            info "The deployed $service container did not report patched PHP 8.3."
+        if [[ -n "$app_filter" ]]; then
+          local -a wordpress_services=("$app")
+        else
+          local -a wordpress_services=(institutional-website intranet-website)
+        fi
+        for service in "${wordpress_services[@]}"; do
+          if ! "${COMPOSE[@]}" exec -T "$service" php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 && PHP_VERSION_ID >= 80336 && ini_get("session.upload_progress.enabled") === "0" ? 0 : 1);'; then
+            info "The deployed $service container did not report patched PHP with session upload progress disabled."
             status=failed; failed=1
           fi
         done
