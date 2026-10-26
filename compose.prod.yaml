@@ -36,6 +36,9 @@ services:
   intranet-worker:
     <<: *intranet-app
     command: ["./bin/jobs"]
+    environment:
+      <<: *intranet-environment
+      RAILS_MAX_THREADS: "8"
     depends_on:
       intranet-setup:
         condition: service_completed_successfully
