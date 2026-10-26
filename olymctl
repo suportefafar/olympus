@@ -114,6 +114,21 @@ else
 fi
 REMOTE_NEXTCLOUD
 }
+run_remote_ai_ssh() {
+  local script="$ROOT/scripts/configure-ai-ssh-8085.sh" head remote_tip
+  need git; need ssh
+  [[ -z "$(git -C "$ROOT" status --porcelain)" ]] || fail 'Olympus has uncommitted changes.'
+  [[ "$(git -C "$ROOT" branch --show-current)" == main ]] || fail 'Deploy from Olympus main.'
+  git -C "$ROOT" fetch origin main || fail 'Could not fetch Olympus main.'
+  head="$(git -C "$ROOT" rev-parse HEAD)"
+  remote_tip="$(git -C "$ROOT" rev-parse origin/main)"
+  [[ "$head" == "$remote_tip" ]] || fail 'Commit and push Olympus main before deploying.'
+  [[ -f "$script" ]] || fail "Missing deployment script: $script"
+  info 'Configuring SSH port 8085 on root@150.164.110.3 from pushed Olympus main.'
+  ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes root@150.164.110.3 'bash -s' < "$script"
+  ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes -p 8085 root@150.164.110.3 'hostname' | grep -qx 'ai-ct-1' || fail 'SSH login on port 8085 could not be verified.'
+  info 'Verified root SSH login on port 8085.'
+}
 compose_files() {
   local reverse_proxy_dir
   reverse_proxy_dir="$(repo_dir reverse-proxy)"
@@ -667,6 +682,7 @@ Usage:
   olymctl prod [--remote] up [app|nextcloud] [--no-pull] [--branch NAME] [--commit SHA] [--prepare-only]
   olymctl dev|prod [--remote] rollback app [--commit SHA]
   olymctl prod --remote down app
+  olymctl prod --remote configure-ai-ssh-8085
   olymctl dev|prod [--remote] status
   olymctl dev|prod [--remote] ports
   olymctl dev|prod down [app]
@@ -684,6 +700,9 @@ main() {
   shift || true
   [[ "$env" == dev || "$env" == prod ]] || { usage; exit 2; }
   case "$action" in
+    configure-ai-ssh-8085)
+      [[ "$env" == prod && "$remote" == true && $# -eq 0 ]] || fail 'Use prod --remote configure-ai-ssh-8085.'
+      run_remote_ai_ssh;;
     up)
       if [[ $# -gt 0 && "$1" != --* ]]; then app="$1"; shift; fi
       while (($#)); do case "$1" in --no-pull) no_pull=true;; --branch) (($#>=2)) || fail "--branch needs a value"; branch="$2"; shift;; --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; --remote) remote=true;; --prepare-only) prepare_only=true;; *) fail "Unknown up option: $1";; esac; shift; done
