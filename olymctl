@@ -135,11 +135,11 @@ compose_files() {
   fi
 }
 read_app() {
-  local requested="$1" line scope
-  APP_URL= APP_SERVICES= APP_DOMAINS= APP_ENV_REQUIRED=true APP_ENV_SCOPE=all
-  while IFS=$'\t' read -r name url services domains required scope || [[ -n "${name:-}" ]]; do
+  local requested="$1" line scope prod_services
+  APP_URL= APP_SERVICES= APP_DOMAINS= APP_ENV_REQUIRED=true APP_ENV_SCOPE=all APP_PROD_SERVICES=
+  while IFS=$'\t' read -r name url services domains required scope prod_services || [[ -n "${name:-}" ]]; do
     [[ -z "${name:-}" || "$name" == \#* ]] && continue
-    if [[ "$name" == "$requested" ]]; then APP_URL="$url"; APP_SERVICES="$services"; APP_DOMAINS="$domains"; APP_ENV_REQUIRED="$required"; APP_ENV_SCOPE="${scope:-all}"; return 0; fi
+    if [[ "$name" == "$requested" ]]; then APP_URL="$url"; APP_SERVICES="$services"; APP_DOMAINS="$domains"; APP_ENV_REQUIRED="$required"; APP_ENV_SCOPE="${scope:-all}"; APP_PROD_SERVICES="${prod_services:-}"; return 0; fi
   done < "$MANIFEST"
   return 1
 }
@@ -425,8 +425,9 @@ previous_deployment() {
   awk -F '\t' -v e="$env" -v a="$app" -v c="$current" '$3==e && ($5==a || (a=="escuta" && $5=="escuta-website")) && $4=="up" && $8 ~ /^success/ {items[++n]=$7} END {for (i=n;i>=1;i--) if (items[i]==c) {if (i>1) print items[i-1]; exit}}' "$HISTORY" 2>/dev/null
 }
 compose_app_services() {
-  local app="$1" service
-  IFS=',' read -ra names <<<"$APP_SERVICES"
+  local app="$1" service services="$APP_SERVICES"
+  if [[ "$ENVIRONMENT" == prod && -n "$APP_PROD_SERVICES" ]]; then services="$APP_PROD_SERVICES"; fi
+  IFS=',' read -ra names <<<"$services"
   for service in "${names[@]}"; do [[ -n "$service" ]] && SELECTED+=("$service"); done
 }
 is_production_wordpress() {
@@ -488,7 +489,7 @@ up() {
   SELECTED=(); local -a chosen=()
   if [[ -n "$app_filter" ]]; then chosen=("$app_filter"); else mapfile -t chosen < <(apps); fi
   # Route changes must deploy the matching proxy checkout together.
-  if [[ "$app_filter" == escuta || "$app_filter" == athenas ]]; then
+  if [[ "$app_filter" == escuta || "$app_filter" == athenas || "$app_filter" == intranet ]]; then
     read_app reverse-proxy || fail "Missing reverse-proxy application."
     prepare_git reverse-proxy "$APP_URL" "" "" "$no_pull"
     prepare_app_env reverse-proxy
@@ -533,7 +534,7 @@ up() {
   # The proxy bind-mounts a single Caddyfile. Git may replace that file's inode
   # while updating routes, leaving the existing container pinned to stale data.
   # Recreate it for route-affecting deploys before reloading Caddy.
-  [[ "$app_filter" != reverse-proxy && "$app_filter" != athenas && "$app_filter" != escuta ]] || cmd+=(--force-recreate)
+  [[ "$app_filter" != reverse-proxy && "$app_filter" != athenas && "$app_filter" != escuta && "$app_filter" != intranet ]] || cmd+=(--force-recreate)
   cmd+=("${SELECTED[@]}")
   id="$(record "$env" up "${app_filter:-all}" "" "" started)"
   if ! "${cmd[@]}"; then status=failed; failed=1; fi

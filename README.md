@@ -117,3 +117,24 @@ Confirm DNS for both domains points to the production proxy and that the install
 ## Athenas
 
 O app `athenas` está registrado em desenvolvimento e produção, nos domínios `athenas.farmacia.local` e `athenas.farmacia.ufmg.br`. Use `olymctl dev up athenas --no-pull` para iniciar localmente e `olymctl prod --remote up athenas` para publicar. O grupo inclui web/worker/Ollama e inicializadores idempotentes de banco/modelo. Ele compartilha `postgres-db` com banco separado e storage persistente; os overlays instalam pgvector no PostgreSQL 17. Antes do primeiro deploy, configure `athenas/.env` no servidor a partir de `.env.production.example`, incluindo segredo Rails, administrador inicial e SMTP. Consulte [preparação local](docs/DEV-ENVIRONMENT.md#athenas), o [README do Athenas](../athenas/README.md) e o [guia de migração de produção](docs/PRODUCTION-MIGRATION.md).
+
+## Intranet Rails and WordPress bridge
+
+`olymctl prod --remote up intranet` deploys Rails at
+`https://intranet-stage.farmacia.ufmg.br`, its Solid Queue worker, the temporary
+WordPress reader, database setup and antivirus definitions updater. The existing
+WordPress stays at `https://intranet.farmacia.ufmg.br`.
+
+The optional seventh `apps.tsv` field overrides the Compose service list in
+production; development keeps the regular third-field list. Intranet deploys
+prepare the matching reverse-proxy checkout and recreate Caddy before reloading.
+
+Before the first startup, use `up intranet --prepare-only`, provision the private
+`intranet/.env` from `.env.production.example`, then deploy through `olymctl`.
+The setup service creates four dedicated PostgreSQL databases and a MySQL user
+with SELECT access only to the three source tables. It never resets databases.
+The sync source is configured in the private env (production: `intranet_wp`);
+polling runs 600 seconds after the previous complete scan. Runtime uploads,
+profile photos and antivirus signatures share the `intranet-storage` volume.
+The production WordPress mounts the restoration pause hook from the intranet
+checkout; that checkout must be prepared before deploying WordPress.
