@@ -20,7 +20,6 @@ olymctl prod --remote up --prepare-only
 olymctl prod --remote rollback APP [--commit SHA]
 olymctl prod --remote status
 olymctl prod --remote ports
-olymctl prod --remote configure-ai-ssh-8085
 olymctl history
 olymctl down dev|prod [app]
 ```
@@ -38,15 +37,12 @@ Host 150.164.110.1
 
 The remote VM must have `olymctl` available on `PATH` (install it once from the server checkout with `sudo ./scripts/install-path.sh`). `status` and `ports` work for both `dev` and `prod` locally. Remote execution currently targets only production; `dev --remote` is not configured yet.
 
-`olymctl prod --remote configure-ai-ssh-8085` applies the reviewed SSH socket drop-in to `ai-ct-1` (`150.164.110.3`) after verifying the deployment files are committed on pushed Olympus `main`. It keeps port 22 active, adds 8085, and verifies an SSH login on 8085. The host's `sshd_config` must already declare both ports.
-
 The CLI does not yet have a command to define remote environments. Adding remote environment configuration is a later step; for now the production user, host, and port stay hardcoded in the script, while the SSH key remains in the operator's SSH config.
 
 Unless `--no-pull` is used, `up` first fetches Olympus `origin/main`. If Olympus advances, the CLI switches to that revision and re-executes the same `up` command before preparing application repositories. A dirty Olympus checkout or local commits absent from `origin/main` stop the update. `--no-pull` skips Git updates for both Olympus and the applications. A remote production `up` performs the same Olympus update on the server before invoking its refreshed CLI.
 
 ```sh
 olymctl prod --remote up
-olymctl prod --remote up codex-api
 olymctl prod --remote up escuta --no-pull
 olymctl prod --remote rollback escuta
 olymctl prod --remote rollback escuta --commit abc1234
@@ -91,8 +87,6 @@ Every runnable app has a root `.env.example`, a local ignored `.env`, and build-
 ## Production server overrides
 
 The separate Nextcloud host is updated with `./olymctl prod --remote up nextcloud`.
-
-The separate AI host (`150.164.110.3`) exposes the authenticated Codex API on HTTPS port 8084. Deploy it from a committed and pushed Olympus `main` checkout with `./olymctl prod --remote up codex-api`. The deployment and API contract are documented in [`codex-api/README.md`](codex-api/README.md). The previous DeepSeek endpoint is moved to port 8086; port 8085 is reserved for SSH.
 Its versioned [server layout and operations guide](../cloud/README.md) is the
 source for paths, persistent volumes, local-only configuration and checks.
 This command uses the pushed `cloud` repository to build a PHP 8.5.12 image,
