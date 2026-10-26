@@ -46,6 +46,7 @@ Unless `--no-pull` is used, `up` first fetches Olympus `origin/main`. If Olympus
 
 ```sh
 olymctl prod --remote up
+olymctl prod --remote up codex-api
 olymctl prod --remote up escuta --no-pull
 olymctl prod --remote rollback escuta
 olymctl prod --remote rollback escuta --commit abc1234
@@ -90,6 +91,8 @@ Every runnable app has a root `.env.example`, a local ignored `.env`, and build-
 ## Production server overrides
 
 The separate Nextcloud host is updated with `./olymctl prod --remote up nextcloud`.
+
+The separate AI host (`150.164.110.3`) exposes the authenticated Codex API on HTTPS port 8084. Deploy it from a committed and pushed Olympus `main` checkout with `./olymctl prod --remote up codex-api`. The deployment and API contract are documented in [`codex-api/README.md`](codex-api/README.md). The previous DeepSeek endpoint is moved to port 8086; port 8085 is reserved for SSH.
 Its versioned [server layout and operations guide](../cloud/README.md) is the
 source for paths, persistent volumes, local-only configuration and checks.
 This command uses the pushed `cloud` repository to build a PHP 8.5.12 image,

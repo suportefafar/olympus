@@ -129,6 +129,21 @@ run_remote_ai_ssh() {
   ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes -p 8085 root@150.164.110.3 'hostname' | grep -qx 'ai-ct-1' || fail 'SSH login on port 8085 could not be verified.'
   info 'Verified root SSH login on port 8085.'
 }
+run_remote_codex_api() {
+  local commit remote_tip archive_root
+  need ssh; need git
+  [[ -z "$(git -C "$ROOT" status --porcelain)" ]] || fail 'Olympus has uncommitted changes.'
+  [[ "$(git -C "$ROOT" branch --show-current)" == main ]] || fail 'Deploy from Olympus main.'
+  git -C "$ROOT" fetch origin main || fail 'Could not fetch Olympus main.'
+  commit="$(git -C "$ROOT" rev-parse HEAD)"
+  remote_tip="$(git -C "$ROOT" rev-parse origin/main)"
+  [[ "$commit" == "$remote_tip" ]] || fail 'Commit and push Olympus main before deploying.'
+  archive_root="/opt/codex-api/releases/$commit"
+  info "Deploying Codex API on root@150.164.110.3 from pushed Olympus commit ${commit:0:12}"
+  ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes root@150.164.110.3 "mkdir -p '$archive_root'"
+  git -C "$ROOT" archive "$commit" codex-api | ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes root@150.164.110.3 "tar -xf - -C '$archive_root'"
+  ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes root@150.164.110.3 "bash '$archive_root/codex-api/deploy.sh'"
+}
 compose_files() {
   local reverse_proxy_dir
   reverse_proxy_dir="$(repo_dir reverse-proxy)"
@@ -679,7 +694,7 @@ ports() {
 usage() { cat <<'EOF'
 Usage:
   olymctl dev up [app|reverse-proxy|postgres-db|mongo-db|mysql-db] [--no-pull] [--branch NAME] [--commit SHA]
-  olymctl prod [--remote] up [app|nextcloud] [--no-pull] [--branch NAME] [--commit SHA] [--prepare-only]
+  olymctl prod [--remote] up [app|nextcloud|codex-api] [--no-pull] [--branch NAME] [--commit SHA] [--prepare-only]
   olymctl dev|prod [--remote] rollback app [--commit SHA]
   olymctl prod --remote down app
   olymctl prod --remote configure-ai-ssh-8085
@@ -712,6 +727,10 @@ main() {
         [[ "$env" == prod && "$remote" == true ]] || fail "Nextcloud deployment requires prod --remote."
         [[ "$no_pull" == false && -z "$branch$commit" && "$prepare_only" == false ]] || fail "Nextcloud deployment does not accept revision or preparation options."
         run_remote_nextcloud
+      elif [[ "$app" == codex-api ]]; then
+        [[ "$env" == prod && "$remote" == true ]] || fail "Codex API deployment requires prod --remote."
+        [[ "$no_pull" == false && -z "$branch$commit" && "$prepare_only" == false ]] || fail "Codex API deployment does not accept revision or preparation options."
+        run_remote_codex_api
       elif [[ "$app" == postgres-db || "$app" == mongo-db || "$app" == mysql-db ]]; then
         [[ "$env" == dev ]] || fail "Database services can only be started in dev."
         [[ "$remote" == false ]] || fail "Remote infrastructure service startup is not supported."
