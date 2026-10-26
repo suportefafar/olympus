@@ -131,8 +131,9 @@ prepare the matching reverse-proxy checkout and recreate Caddy before reloading.
 
 Before the first startup, use `up intranet --prepare-only`, provision the private
 `intranet/.env` from `.env.production.example`, then deploy through `olymctl`.
-The setup service creates four dedicated PostgreSQL databases and a MySQL user
-with SELECT access only to the three source tables. It never resets databases.
+The versioned Olympus preflight creates a MySQL user with SELECT access only to
+the three source tables through the legacy server local socket. The setup
+service creates four dedicated PostgreSQL databases and never resets databases.
 The sync source is configured in the private env (production: `intranet_wp`);
 polling runs 600 seconds after the previous complete scan. Runtime uploads,
 profile photos and antivirus signatures share the `intranet-storage` volume.

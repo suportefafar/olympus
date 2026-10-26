@@ -530,6 +530,17 @@ up() {
   fi
   SELECTED+=(reverse-proxy)
   compose_files
+  if [[ "$env" == prod ]]; then
+    for app in "${chosen[@]}"; do
+      if [[ "$app" == intranet ]]; then
+        need python3
+        local mysql_container
+        mysql_container="$("${COMPOSE[@]}" ps -q mysql-db)"
+        [[ -n "$mysql_container" ]] || fail "Start the production WordPress/MySQL service before preparing the intranet reader."
+        python3 "$ROOT/scripts/prepare-intranet-mysql.py" --container "$mysql_container" --env-file "$(repo_dir intranet)/.env" || fail "Could not prepare the production WordPress reader."
+      fi
+    done
+  fi
   local -a cmd=("${COMPOSE[@]}" up -d --build --remove-orphans)
   # The proxy bind-mounts a single Caddyfile. Git may replace that file's inode
   # while updating routes, leaving the existing container pinned to stale data.
