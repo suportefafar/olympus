@@ -126,10 +126,14 @@ WordPress reader, database setup and antivirus definitions updater. The existing
 WordPress stays at `https://intranet.farmacia.ufmg.br`.
 
 The production stage worker enables `config/recurring_stage.yml` explicitly:
-equipment loan reminders run daily at 08:00 America/Sao_Paulo, pending delivery
-recovery runs every five minutes, and finished queue jobs are cleared hourly.
-This overrides the former private `SOLID_QUEUE_SKIP_RECURRING=true` setting.
-Auditorium reminders and birthday posts await separate activation.
+birthday posts run daily at 07:00 America/Sao_Paulo; equipment loan and auditorium
+reminders run daily at 08:00. Pending delivery recovery runs every five minutes,
+and finished queue jobs are cleared hourly. This overrides the former private
+`SOLID_QUEUE_SKIP_RECURRING=true` setting.
+
+The production WordPress reader sets `WP_SYNC_INVENTORY_ENABLED=false`: IPs,
+equipment and disks are managed in Rails, and their existing records and import
+mappings are preserved. Loans and the other modules continue syncing.
 
 The optional seventh `apps.tsv` field overrides the Compose service list in
 production; development keeps the regular third-field list. Intranet deploys

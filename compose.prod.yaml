@@ -56,6 +56,7 @@ services:
     environment:
       <<: *intranet-environment
       WP_SYNC_WORDPRESS_PATH: /wordpress
+      WP_SYNC_INVENTORY_ENABLED: "false"
     volumes:
       - intranet-storage:/rails/storage
       - type: bind
