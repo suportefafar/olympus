@@ -286,6 +286,7 @@ services:
       - ../intranet/deploy/wordpress-uploads.ini:/usr/local/etc/php/conf.d/intranet-uploads.ini:ro
       - ../intranet/deploy/wordpress-uploads.conf:/etc/apache2/conf-enabled/intranet-uploads.conf:ro
       - ../intranet/deploy/wordpress-sync-import.php:/var/www/html/wp-content/mu-plugins/intranet-wordpress-sync.php:ro
+      - ../intranet/deploy/wordpress-ticket-number-reservations.php:/var/www/html/wp-content/mu-plugins/intranet-ticket-number-reservations.php:ro
       - ../intranet-website:/workspace/intranet-website:ro
       - type: bind
         source: ../intranet-website/html
