@@ -39,6 +39,8 @@ services:
     environment:
       <<: *intranet-environment
       RAILS_MAX_THREADS: "8"
+      SOLID_QUEUE_SKIP_RECURRING: "false"
+      SOLID_QUEUE_RECURRING_SCHEDULE: config/recurring_stage.yml
     depends_on:
       intranet-setup:
         condition: service_completed_successfully
