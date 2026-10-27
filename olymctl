@@ -430,7 +430,7 @@ compose_app_services() {
   IFS=',' read -ra names <<<"$services"
   for service in "${names[@]}"; do [[ -n "$service" ]] && SELECTED+=("$service"); done
 }
-is_production_wordpress() {
+is_wordpress_service() {
   [[ "$1" == institutional-website || "$1" == intranet-website ]]
 }
 check_wordpress_php() {
@@ -507,8 +507,11 @@ up() {
       python3 "$ROOT/scripts/migrate-escuta-name.py" "${rename_arguments[@]}" || fail "Could not migrate the Escuta checkout."
     fi
     dir="$(repo_dir "$app")"; old="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
-    if [[ "$env" == prod ]] && is_production_wordpress "$app"; then
+    if is_wordpress_service "$app"; then
       [[ -z "$branch$commit" ]] || fail "WordPress services use the Olympus Compose configuration; --branch and --commit do not apply."
+      if [[ "$env" == dev ]]; then
+        [[ -d "$dir/html" ]] || fail "Missing local WordPress content at $dir/html; restore it before startup."
+      fi
       old="$(git -C "$ROOT" rev-parse HEAD)"
       sha="$old"
     else
@@ -525,7 +528,7 @@ up() {
   fi
   if [[ "$env" == prod ]]; then
     for app in "${chosen[@]}"; do
-      if is_production_wordpress "$app"; then prepare_wordpress_image; break; fi
+      if is_wordpress_service "$app"; then prepare_wordpress_image; break; fi
     done
   fi
   SELECTED+=(reverse-proxy)
@@ -551,7 +554,7 @@ up() {
   if ! "${cmd[@]}"; then status=failed; failed=1; fi
   if [[ "$failed" == 0 && "$env" == prod ]]; then
     for app in "${chosen[@]}"; do
-      if is_production_wordpress "$app"; then
+      if is_wordpress_service "$app"; then
         if [[ -n "$app_filter" ]]; then
           local -a wordpress_services=("$app")
         else

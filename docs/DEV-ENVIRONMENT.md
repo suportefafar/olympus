@@ -4,6 +4,8 @@ No desenvolvimento, o WordPress (`intranet-website`) usa `http://intranet.farmac
 
 Os arquivos WordPress locais ficam diretamente em `fafar/institutional-website/`, `fafar/intranet-website/` e `fafar/escuta-website-wp/`, ao lado de `olympus/` e `intranet/`. Os serviços `institutional-website`, `intranet-website` e `wordpress-sync` usam `../institutional-website/html` e `../intranet-website/html` nos arquivos Compose. Preserve essas pastas, incluindo uploads e plugins, ao reorganizar os checkouts; elas contêm dados locais e não são preparadas pelo `olymctl`.
 
+Para iniciar o site institucional com MySQL e o proxy, use `olymctl dev up institutional-website` e acesse `http://farmacia.local` (ou `http://www.farmacia.local`). O comando usa o conteúdo existente em `../institutional-website/html`, sem exigir repositório Git ou `.env` nessa pasta. Use `--no-pull` para testar alterações locais do Olympus; `--branch` e `--commit` não se aplicam aos serviços WordPress. `olymctl dev down institutional-website` para somente o site.
+
 O `olymctl dev up` prepara o host para os domínios locais `*.farmacia.local` e inicia os serviços. A inclusão dessas entradas em `/etc/hosts` é responsabilidade do Olympus porque faz parte da preparação do ambiente de desenvolvimento. Se precisar de privilégios administrativos, o comando pede autorização antes de alterar o arquivo. Domínios de produção `*.farmacia.ufmg.br` devem usar DNS normal e nunca ser mapeados para `127.0.0.1`.
 
 O overlay dev publica Dike em `127.0.0.1:3002` e PostgreSQL, MySQL e MongoDB em `127.0.0.1:5432`, `:3306` e `:27017`. Esses ports ficam disponíveis apenas no host de desenvolvimento.
