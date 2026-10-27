@@ -261,6 +261,7 @@ services:
         define( 'WP_HOME', 'http://farmacia.local' );
         define( 'WP_SITEURL', 'http://farmacia.local' );
         define( 'WP_ENVIRONMENT_TYPE', 'development' );
+        define( 'FS_METHOD', 'direct' );
     volumes:
       - ../institutional-website:/workspace/institutional-website:ro
       - type: bind

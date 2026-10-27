@@ -6,6 +6,8 @@ Os arquivos WordPress locais ficam diretamente em `fafar/institutional-website/`
 
 Para iniciar o site institucional com MySQL e o proxy, use `olymctl dev up institutional-website` e acesse `http://farmacia.local` (ou `http://www.farmacia.local`). O comando usa o conteúdo existente em `../institutional-website/html`, sem exigir repositório Git ou `.env` nessa pasta. Use `--no-pull` para testar alterações locais do Olympus; `--branch` e `--commit` não se aplicam aos serviços WordPress. `olymctl dev down institutional-website` para somente o site.
 
+O site institucional em desenvolvimento usa `FS_METHOD=direct` para instalar e atualizar plugins pelo painel sem pedir FTP. Isso permite usar as permissões de escrita existentes no bind mount mesmo quando os arquivos pertencem ao usuário do host e o PHP roda como `www-data`. A opção fica em `WORDPRESS_CONFIG_EXTRA` no overlay dev.
+
 O `olymctl dev up` prepara o host para os domínios locais `*.farmacia.local` e inicia os serviços. A inclusão dessas entradas em `/etc/hosts` é responsabilidade do Olympus porque faz parte da preparação do ambiente de desenvolvimento. Se precisar de privilégios administrativos, o comando pede autorização antes de alterar o arquivo. Domínios de produção `*.farmacia.ufmg.br` devem usar DNS normal e nunca ser mapeados para `127.0.0.1`.
 
 O overlay dev publica Dike em `127.0.0.1:3002` e PostgreSQL, MySQL e MongoDB em `127.0.0.1:5432`, `:3306` e `:27017`. Esses ports ficam disponíveis apenas no host de desenvolvimento.
