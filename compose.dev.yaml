@@ -263,6 +263,8 @@ services:
         define( 'WP_ENVIRONMENT_TYPE', 'development' );
         define( 'FS_METHOD', 'direct' );
     volumes:
+      - ./wordpress/dev-uploads.ini:/usr/local/etc/php/conf.d/wordpress-dev-uploads.ini:ro
+      - ./wordpress/dev-uploads.conf:/etc/apache2/conf-enabled/wordpress-dev-uploads.conf:ro
       - ../institutional-website:/workspace/institutional-website:ro
       - type: bind
         source: ../institutional-website/html

@@ -8,6 +8,8 @@ Para iniciar o site institucional com MySQL e o proxy, use `olymctl dev up insti
 
 O site institucional em desenvolvimento usa `FS_METHOD=direct` para instalar e atualizar plugins pelo painel sem pedir FTP. Isso permite usar as permissões de escrita existentes no bind mount mesmo quando os arquivos pertencem ao usuário do host e o PHP roda como `www-data`. A opção fica em `WORDPRESS_CONFIG_EXTRA` no overlay dev.
 
+O upload aceita arquivos de até 2 GiB (`2048M`), com `post_max_size=2050M` para acomodar o formulário multipart. Os arquivos `wordpress/dev-uploads.ini` e `wordpress/dev-uploads.conf` configuram PHP e Apache no serviço institucional: memória de 512 MiB, tempo de execução/entrada de uma hora e limite de corpo do Apache delegado ao PHP. Mudanças nesses arquivos exigem reinício do contêiner.
+
 O `olymctl dev up` prepara o host para os domínios locais `*.farmacia.local` e inicia os serviços. A inclusão dessas entradas em `/etc/hosts` é responsabilidade do Olympus porque faz parte da preparação do ambiente de desenvolvimento. Se precisar de privilégios administrativos, o comando pede autorização antes de alterar o arquivo. Domínios de produção `*.farmacia.ufmg.br` devem usar DNS normal e nunca ser mapeados para `127.0.0.1`.
 
 O overlay dev publica Dike em `127.0.0.1:3002` e PostgreSQL, MySQL e MongoDB em `127.0.0.1:5432`, `:3306` e `:27017`. Esses ports ficam disponíveis apenas no host de desenvolvimento.
