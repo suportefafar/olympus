@@ -1,3 +1,4 @@
+from component_fixture import install_components
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,7 @@ class AthenasControlTest(unittest.TestCase):
         self.workspace = Path(self.temp.name)
         self.olympus = self.workspace/'olympus'
         self.olympus.mkdir()
+        install_components(ROOT, self.olympus)
         (self.olympus/'olymctl').write_text((ROOT/'olymctl').read_text().replace('ensure_dev_hosts() {', 'ensure_dev_hosts() { return 0; }\nunused_ensure_dev_hosts() {', 1))
         (self.olympus/'olymctl').chmod(0o755)
         self.log = self.workspace/'calls.jsonl'

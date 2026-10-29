@@ -1,3 +1,4 @@
+from component_fixture import install_components
 import json
 import os
 from pathlib import Path
@@ -16,6 +17,7 @@ class WordPressControlTest(unittest.TestCase):
         self.workspace = Path(self.temp.name)
         self.olympus = self.workspace / 'olympus'
         self.olympus.mkdir()
+        install_components(ROOT, self.olympus)
         script = (ROOT / 'olymctl').read_text().replace(
             'ensure_dev_hosts() {',
             'ensure_dev_hosts() { return 0; }\nunused_ensure_dev_hosts() {', 1)
@@ -28,7 +30,7 @@ class WordPressControlTest(unittest.TestCase):
                 'MYSQL_ROOT_PASSWORD', 'WORDPRESS_INSTITUTIONAL_PATH',
                 'WORDPRESS_INTRANET_PATH', 'CRONOS_ALLOWED_NETWORKS')
         (self.olympus / '.env').write_text(''.join(f'{key}=test-value\n' for key in keys))
-        (self.olympus / '.gitignore').write_text('.env\nstate/\n')
+        (self.olympus / '.gitignore').write_text('.env\nstate/\nwordpress/releases/\n')
         self.content = self.workspace / 'institutional-website/html'
         self.content.mkdir(parents=True)
         self.marker = self.content / 'operator-content.txt'

@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Intranet Authenticated Backup Downloads
+ * Plugin Name: WordPress Authenticated Backup Downloads
  * Description: Allows administrators to download All-in-One WP Migration exports.
  */
 

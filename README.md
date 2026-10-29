@@ -149,3 +149,9 @@ polling runs 600 seconds after the previous complete scan. Runtime uploads,
 profile photos and antivirus signatures share the `intranet-storage` volume.
 The production WordPress mounts the restoration pause hook from the intranet
 checkout; that checkout must be prepared before deploying WordPress.
+
+### Institutional WordPress components
+
+Production mounts the custom CF7 CRUD plugin and institutional child theme read-only from pinned Git commits in `wordpress/institutional-components.tsv`. Update and push the component repository first, update the manifest pin in Olympus, then commit/push Olympus and deploy with `olymctl prod --remote up institutional-website`. The operator's original content, uploads and development checkouts are preserved underneath these mounts. Local WordPress development keeps its existing workflow.
+
+`olymctl` prepares Git caches outside the web root and exports immutable releases under ignored `wordpress/releases/`; exports contain no Git history, environment files, tests or dependencies. The first deployment requires network access; `--no-pull` requires the pinned release or repository already cached. Keep old release directories while containers may still mount them. Deployment-managed Apache and MU-plugin safeguards protect private metadata, prevent script execution in uploads and route backup downloads through WordPress authentication with `manage_options` authorization. The administrator download supports HEAD and byte ranges. Do not restore quarantined incident backups without first cleaning their database contents.

@@ -7,3 +7,5 @@ production/
 /.escuta-override-*
 
 __pycache__/
+
+/wordpress/releases/

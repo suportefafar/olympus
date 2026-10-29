@@ -114,6 +114,18 @@ else
 fi
 REMOTE_NEXTCLOUD
 }
+institutional_component_paths() {
+  need python3
+  local assignments name value
+  assignments="$(python3 "$ROOT/wordpress/prepare-institutional-components.py" --manifest "$ROOT/wordpress/institutional-components.tsv" --cache "$WORKSPACE/.wordpress-component-cache" --releases "$ROOT/wordpress/releases" --paths-only)" || fail "Invalid institutional component pins."
+  while IFS='=' read -r name value; do export "$name=$value"; done <<<"$assignments"
+}
+prepare_institutional_components() {
+  need python3
+  local -a options=()
+  [[ "$1" != true ]] || options+=(--no-pull)
+  python3 "$ROOT/wordpress/prepare-institutional-components.py" --manifest "$ROOT/wordpress/institutional-components.tsv" --cache "$WORKSPACE/.wordpress-component-cache" --releases "$ROOT/wordpress/releases" "${options[@]}" >/dev/null || fail "Could not prepare institutional component releases."
+}
 compose_files() {
   local reverse_proxy_dir
   reverse_proxy_dir="$(repo_dir reverse-proxy)"
@@ -125,6 +137,7 @@ compose_files() {
     COMPOSE+=(-f "$reverse_proxy_dir/compose.olympus.dev.yaml")
   fi
   if [[ "$ENVIRONMENT" == prod ]]; then
+    institutional_component_paths
     COMPOSE+=(--env-file "$reverse_proxy_dir/.env")
     COMPOSE+=(-f "$ROOT/compose.prod.yaml")
     if [[ -f "$ROOT/compose.prod.local.yaml" ]]; then
@@ -522,6 +535,7 @@ up() {
     previous_sha["$app"]="$old"; deployed_sha["$app"]="$sha"
     compose_app_services "$app"; affected+=("$app:$old:$sha")
   done
+  if [[ "$env" == prod ]]; then prepare_institutional_components "$no_pull"; fi
   if [[ "$prepare_only" == true ]]; then
     info "Prepared production services for ${chosen[*]}; no services were started or restarted."
     return 0

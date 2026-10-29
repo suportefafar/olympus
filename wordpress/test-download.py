@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Apache + PHP integration check using isolated files and fake WP roles."""
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -47,13 +48,28 @@ require '/opt/download/intranet-backup-download.php';
 intranet_backup_download();
 http_response_code(404);
 """)
+    institutional = os.environ.get('INSTITUTIONAL_TEST') == '1'
+    if institutional:
+        original = '# Existing WordPress rules must stay unchanged.\n'
+        (root / '.htaccess').write_text(original)
+        uploads = root / 'wp-content/uploads'
+        uploads.mkdir()
+        (uploads / 'document.pdf').write_text('%PDF-safe')
+        for filename in ('test.php', 'test.inc', 'test.php.jpg', 'test.phtml'):
+            (uploads / filename).write_text('<?php echo "executed";')
+        for filename in ('.git/HEAD', 'nested/.git/config', '.env', 'wp-config.php.bak'):
+            private = root / filename
+            private.parent.mkdir(parents=True, exist_ok=True)
+            private.write_text('private data')
+    setup = 'prepare-institutional-security.php' if institutional else 'prepare-intranet-download.php'
+    mounts = ['--mount', f'type=bind,source={source}/institutional-uploads.conf,target=/etc/apache2/conf-enabled/fafar-uploads.conf,readonly'] if institutional else []
     container = docker(
         "run", "-d", "--rm", "-p", "127.0.0.1::80",
         "--mount", f"type=bind,source={root},target=/var/www/html",
         "--mount", f"type=bind,source={source},target=/opt/download,readonly",
-        "--entrypoint", "/bin/sh", "wordpress:php8.3-apache", "-ec",
-        "php /opt/download/prepare-intranet-download.php; "
-        "php /opt/download/prepare-intranet-download.php; exec apache2-foreground",
+        *mounts,
+        "--entrypoint", "/bin/sh", os.environ.get('WORDPRESS_TEST_IMAGE', 'wordpress:php8.3-apache'), "-ec",
+        f"php /opt/download/{setup}; php /opt/download/{setup}; exec apache2-foreground",
     )
     try:
         info = json.loads(docker("inspect", container))[0]
@@ -107,7 +123,14 @@ http_response_code(404);
         assert request("/index.php?intranet_protected_backup[]=export.wpress")[0] == 404
         updated = (root / ".htaccess").read_text()
         assert updated.count("intranet_protected_backup=") == 1
-        assert "\n".join(line for line in updated.splitlines() if "intranet_protected_backup=" not in line) + "\n" == original
+        if institutional:
+            for path in ['/.git/HEAD', '/nested/.git/config', '/.env', '/wp-config.php.bak', '/wp-content/uploads/test.php', '/wp-content/uploads/test.inc', '/wp-content/uploads/test.php.jpg', '/wp-content/uploads/test.phtml']:
+                assert request(path)[0] == 403, path
+            assert request('/wp-content/uploads/document.pdf')[0] == 200
+            assert updated.count('# BEGIN FAFAR Institutional Security') == 1
+            assert updated.endswith(original)
+        else:
+            assert "\n".join(line for line in updated.splitlines() if "intranet_protected_backup=" not in line) + "\n" == original
         print("PASS: full download, authentication, HEAD, ranges, path containment, Apache routing and idempotent setup")
     finally:
         docker("rm", "-f", container)

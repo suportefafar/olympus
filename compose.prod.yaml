@@ -270,6 +270,7 @@ services:
     build:
       context: ./wordpress
       dockerfile: Dockerfile.php8.3.36
+    command: ["/bin/sh", "-ec", "php /opt/fafar/prepare-security.php; exec docker-entrypoint.sh apache2-foreground"]
     restart: unless-stopped
     depends_on: [mysql-db]
     environment:
@@ -282,6 +283,20 @@ services:
       - type: bind
         source: ${WORDPRESS_INSTITUTIONAL_PATH:?Set WORDPRESS_INSTITUTIONAL_PATH in olympus/.env}
         target: /var/www/html
+      - type: bind
+        source: ${FAFAR_INSTITUTIONAL_PLUGIN_PATH:?olymctl must prepare institutional components}
+        target: /var/www/html/wp-content/plugins/fafar-cf7crud
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${FAFAR_INSTITUTIONAL_THEME_PATH:?olymctl must prepare institutional components}
+        target: /var/www/html/wp-content/themes/institutional-astra-child-theme
+        read_only: true
+        bind: {create_host_path: false}
+      - ./wordpress/prepare-institutional-security.php:/opt/fafar/prepare-security.php:ro
+      - ./wordpress/institutional-security.php:/var/www/html/wp-content/mu-plugins/fafar-institutional-security.php:ro
+      - ./wordpress/intranet-backup-download.php:/var/www/html/wp-content/mu-plugins/fafar-backup-download.php:ro
+      - ./wordpress/institutional-uploads.conf:/etc/apache2/conf-enabled/fafar-institutional-uploads.conf:ro
     networks: [backend, edge]
 
   intranet-website:
