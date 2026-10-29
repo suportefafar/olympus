@@ -47,3 +47,16 @@ add_action('wp_loaded', function () {
     update_option($key, $result, false);
     delete_option($key . '_lock');
 }, 99);
+
+// Plugin activation preserves its old settings. The incident audit found its WAF
+// disabled, so enable the installed rule set through Wordfence's own save API.
+add_action('wp_loaded', function () {
+    $key = 'fafar_security_firewall_20261029';
+    if (get_option($key) || !class_exists('wfConfig') || !class_exists('wfWAF')) return;
+    $waf = wfWAF::getInstance();
+    if (!defined('WFWAF_OPERATIONAL') || !WFWAF_OPERATIONAL || !count($waf->getRules())) return;
+    wfConfig::save(['wafStatus' => 'enabled']);
+    if ($waf->getStorageEngine()->getConfig('wafStatus') === 'enabled') {
+        update_option($key, ['enabled_utc' => gmdate('c'), 'rule_count' => count($waf->getRules())], false);
+    }
+}, 100);

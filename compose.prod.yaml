@@ -274,7 +274,7 @@ services:
     restart: unless-stopped
     depends_on: [mysql-db]
     environment:
-      FAFAR_SECURITY_RELEASE: "2026-10-29.2"
+      FAFAR_SECURITY_RELEASE: "2026-10-29.3"
       WORDPRESS_DB_HOST: mysql-db:3306
       WORDPRESS_DB_USER: ${MYSQL_USER:?Set MYSQL_USER in olympus/.env}
       WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in olympus/.env}
