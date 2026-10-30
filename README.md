@@ -108,6 +108,17 @@ Development and production routes and Caddy configuration live in `reverse-proxy
 
 The dev override publishes Dike on `127.0.0.1:3002` and PostgreSQL/MySQL/MongoDB on `127.0.0.1:5432`, `:3306`, and `:27017`. It serves Nodus at `nodus.farmacia.local` and Ciclum at `ciclum.farmacia.local`; both use the shared `postgres-db`, with separate databases. Production also serves both through the shared reverse proxy and uses the same shared PostgreSQL service. Nodus has separate primary/cache/queue/cable databases; Ciclum uses `ciclum_production`. App storage volumes hold uploaded files.
 
+## Nodus web search
+
+Nodus includes a private `nodus-search` SearXNG service, built from
+`nodus/deploy/search/`. Its image is pinned by digest in the Nodus repository.
+The API receives `WEB_SEARCH_URL=http://nodus-search:8080/search` in both
+environments. The service has a separate outbound network and shares the backend
+network with Rails; it publishes no ports and has no reverse-proxy route. The
+`nodus` deployment group includes the search service, and Rails waits for its
+health check. Deploy the reviewed Nodus and Olympus revisions together using
+`olymctl prod --remote up nodus`; no search credentials are needed.
+
 ## Preparing Nodus and Ciclum for production
 
 The production definitions are present, but the services have not been deployed. Before the first production `up`, create `nodus/.env.production` from its example, set `SECRET_KEY_BASE` and a provider API key. Create `ciclum/.env.production` from its example and set `RAILS_MASTER_KEY` from the Ciclum credentials key. Both services use `POSTGRES_USER` and `POSTGRES_PASSWORD` from the private `olympus/.env`. Do not commit the app production files.

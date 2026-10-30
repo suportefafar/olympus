@@ -132,8 +132,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
       RAILS_MAX_THREADS: 3
       FRONTEND_ORIGIN: https://nodus.farmacia.ufmg.br
+      WEB_SEARCH_URL: http://nodus-search:8080/search
     depends_on:
       postgres-db:
+        condition: service_healthy
+      nodus-search:
         condition: service_healthy
     restart: unless-stopped
     networks: [backend, edge]

@@ -175,9 +175,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
       OPENROUTER_SITE_URL: https://nodus.farmacia.local
+      WEB_SEARCH_URL: http://nodus-search:8080/search
     command: ["bash", "-lc", "bundle exec rails db:prepare && exec bundle exec rails server -b 0.0.0.0 -p 3000"]
     depends_on:
       postgres-db:
+        condition: service_healthy
+      nodus-search:
         condition: service_healthy
     volumes:
       - ../nodus:/rails

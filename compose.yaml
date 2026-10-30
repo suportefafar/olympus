@@ -1,5 +1,21 @@
 name: olympus
 services:
+  nodus-search:
+    build: {context: ../nodus/deploy/search}
+    restart: unless-stopped
+    tmpfs:
+      - /etc/searxng
+      - /var/cache/searxng
+    mem_limit: 512m
+    cpus: 1
+    healthcheck:
+      test: ["CMD", "/usr/local/searxng/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [backend, nodus-search-egress]
+
   postgres-db:
     image: postgres:17
     restart: unless-stopped
@@ -91,6 +107,7 @@ services:
     networks: [edge]
 
 networks:
+  nodus-search-egress: {}
   backend:
     internal: true
   edge: {}

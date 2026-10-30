@@ -4,7 +4,7 @@ intranet	git@github.com:suportefafar/intranet.git	intranet,wordpress-sync	intran
 escuta	git@github.com:suportefafar/escuta.git	escuta	nova-escuta.farmacia.ufmg.br,nova-escuta.farmacia.local,escuta.farmacia.local	true
 chatrapido	git@github.com:suportefafar/chatrapido.git	chatrapido	chatrapido.farmacia.ufmg.br,chatrapido.farmacia.local	true
 stagemanager	git@github.com:suportefafar/stagemanager.git	stagemanager	stagemanager.farmacia.ufmg.br,stagemanager.farmacia.local	true
-nodus	git@github.com:giovanecf/nodus.git	nodus-api,nodus-client	nodus.farmacia.ufmg.br,nodus.farmacia.local	true	all
+nodus	git@github.com:giovanecf/nodus.git	nodus-api,nodus-client,nodus-search	nodus.farmacia.ufmg.br,nodus.farmacia.local	true	all
 ciclum	git@github.com:giovanecf/ciclum.git	ciclum	ciclum.farmacia.ufmg.br,ciclum.farmacia.local	true	all
 dike	git@github.com:suportefafar/dike.git	dike	-	true
 temis	git@github.com:suportefafar/temis.git	temis	-	true
