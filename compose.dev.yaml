@@ -62,6 +62,7 @@ services:
     build:
       args:
         BUNDLE_WITHOUT_GROUPS: test
+    depends_on: [postgres-db, dike]
     environment:
       RAILS_ENV: development
       INTRANET_DATABASE_HOST: postgres-db
@@ -70,6 +71,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
       INTRANET_PUBLIC_BASE_URL: http://intranet-stage.farmacia.local
       HERMES_API_URL: http://hermes:80
+      DIKE_API_URL: http://dike:3002
     volumes:
       # Development runs directly from the complete Rails checkout.
       - ../intranet:/rails
