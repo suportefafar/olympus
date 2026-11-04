@@ -40,6 +40,7 @@ class ReaderProvisioningTest(unittest.TestCase):
         grants = [line for line in commands.splitlines() if line.startswith('GRANT ')]
         self.assertEqual(grants, [
             "GRANT SELECT, INSERT ON `intranet_wp`.`wp_fafar_cf7crud_submissions` TO 'intranet_rails_numbers'@'%';",
+            "GRANT UPDATE (`is_active`) ON `intranet_wp`.`wp_fafar_cf7crud_submissions` TO 'intranet_rails_numbers'@'%';",
             "GRANT SELECT, UPDATE ON `intranet_wp`.`wp_intranet_ticket_number_sequence` TO 'intranet_rails_numbers'@'%';"])
         self.assertNotIn('DROP ', commands + schema + trigger)
         self.assertIn('BEFORE INSERT', trigger)

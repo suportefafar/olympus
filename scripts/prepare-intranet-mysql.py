@@ -49,6 +49,7 @@ def reservation_statements(values):
     account = "'intranet_rails_numbers'@'%'"
     grants = f"CREATE USER IF NOT EXISTS {account} IDENTIFIED BY '{password}';\nALTER USER {account} IDENTIFIED BY '{password}';\n"
     grants += f"GRANT SELECT, INSERT ON `{database}`.`{prefix}fafar_cf7crud_submissions` TO {account};\n"
+    grants += f"GRANT UPDATE (`is_active`) ON `{database}`.`{prefix}fafar_cf7crud_submissions` TO {account};\n"
     grants += f"GRANT SELECT, UPDATE ON `{database}`.`{prefix}intranet_ticket_number_sequence` TO {account};"
     probe = f"SELECT ACTION_STATEMENT FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '{database}' AND TRIGGER_NAME = '{prefix}intranet_ticket_number_insert';"
     return f"USE `{database}`;\n" + schema, f"USE `{database}`;\n" + trigger, grants, f"SHOW GRANTS FOR {account};", probe
@@ -93,6 +94,8 @@ def main():
         writer_output = mysql(args.container, writer_verification)
         writer_allowed = {
             f"GRANT SELECT, INSERT ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}fafar_cf7crud_submissions`",
+            f"GRANT UPDATE (`is_active`) ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}fafar_cf7crud_submissions`",
+            f"GRANT SELECT, INSERT, UPDATE (`is_active`) ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}fafar_cf7crud_submissions`",
             f"GRANT SELECT, UPDATE ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}intranet_ticket_number_sequence`",
         }
         for line in writer_output.splitlines():
