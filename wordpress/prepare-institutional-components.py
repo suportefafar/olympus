@@ -12,7 +12,8 @@ import tarfile
 import tempfile
 
 NAMES = {'fafar-cf7crud': 'FAFAR_INSTITUTIONAL_PLUGIN_PATH',
-         'institutional-astra-child-theme': 'FAFAR_INSTITUTIONAL_THEME_PATH'}
+         'institutional-astra-child-theme': 'FAFAR_INSTITUTIONAL_THEME_PATH',
+         'institutional-theme': 'FAFAR_INSTITUTIONAL_STANDALONE_THEME_PATH'}
 
 def git(cache, *args):
     return subprocess.check_output(['git', '--git-dir', str(cache), *args])
@@ -26,8 +27,8 @@ def manifest(path):
         if name not in NAMES or not re.fullmatch('[0-9a-f]{40}', revision) or url.startswith('-'):
             raise ValueError('Invalid institutional component pin')
         entries.append((name, url, revision))
-    if len(entries) != 2 or {e[0] for e in entries} != set(NAMES):
-        raise ValueError('Both institutional components must be pinned exactly once')
+    if len(entries) != len(NAMES) or {e[0] for e in entries} != set(NAMES):
+        raise ValueError('All institutional components must be pinned exactly once')
     return entries
 
 def export(cache, revision, target):
@@ -39,7 +40,7 @@ def export(cache, revision, target):
                 path = PurePosixPath(member.name)
                 if path.is_absolute() or '..' in path.parts or member.issym() or member.islnk():
                     raise ValueError('Unsafe path in component archive')
-                if any(part.startswith(('.git', '.env')) or part in ('tests', 'node_modules') for part in path.parts) or path.name == 'example.env':
+                if any(part.startswith(('.git', '.env')) or part in ('tests', 'node_modules') for part in path.parts) or path.name in ('example.env', 'chat-export.md') or 'chat-export-assets' in path.parts:
                     continue
                 destination = staging.joinpath(*path.parts)
                 if member.isdir():

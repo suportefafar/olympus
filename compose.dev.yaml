@@ -264,6 +264,7 @@ services:
   institutional-website:
     image: wordpress:php8.3-apache
     depends_on: [mysql-db]
+    env_file: [../institutional-website/.env]
     environment:
       WORDPRESS_DB_HOST: mysql-db:3306
       WORDPRESS_DB_USER: ${MYSQL_USER:-local-wp}

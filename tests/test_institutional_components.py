@@ -14,7 +14,7 @@ class ComponentTest(unittest.TestCase):
  def commit(self):
   self.git('add','.');self.git('-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture');return self.git('rev-parse','HEAD')
  def test_export_contains_only_public_tracked_files(self):
-  for name in ['plugin.php','.env.production','tests/test.php','node_modules/secret','example.env']:
+  for name in ['plugin.php','.env.production','tests/test.php','node_modules/secret','example.env','chat-export.md','chat-export-assets/image.png']:
    path=self.repo/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('fixture')
   sha=self.commit();target=self.root/'release';module.export(self.repo/'.git',sha,target)
   self.assertTrue((target/'plugin.php').is_file())
@@ -23,11 +23,15 @@ class ComponentTest(unittest.TestCase):
   (self.repo/'escape').symlink_to('/etc/passwd');sha=self.commit();target=self.root/'release'
   with self.assertRaises(ValueError):module.export(self.repo/'.git',sha,target)
   self.assertFalse(target.exists());self.assertFalse(list(self.root.glob('.component-*')))
- def test_manifest_requires_both_exact_pins(self):
+ def test_manifest_requires_all_exact_pins(self):
   path=self.root/'manifest';path.write_text('fafar-cf7crud\turl\t'+'a'*40+'\n')
   with self.assertRaises(ValueError):module.manifest(path)
   path.write_text(path.read_text()+'institutional-astra-child-theme\turl\t'+'b'*40+'\n')
-  self.assertEqual(2,len(module.manifest(path)))
+  with self.assertRaises(ValueError):module.manifest(path)
+  path.write_text(path.read_text()+'institutional-theme\turl\t'+'c'*40+'\n')
+  self.assertEqual(3,len(module.manifest(path)))
+  path.write_text(path.read_text()+'institutional-theme\turl\t'+'d'*40+'\n')
+  with self.assertRaises(ValueError):module.manifest(path)
  def test_uncached_no_pull_fails_without_network(self):
   path=self.root/'manifest';path.write_text(''.join(f'{name}\tunused-url\t'+ 'a'*40+'\n' for name in module.NAMES))
   result=subprocess.run(['python3',str(ROOT/'wordpress/prepare-institutional-components.py'),'--manifest',str(path),'--cache',str(self.root/'cache'),'--releases',str(self.root/'releases'),'--no-pull'],capture_output=True,text=True)
