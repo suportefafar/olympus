@@ -11,6 +11,7 @@ temis	git@github.com:suportefafar/temis.git	temis	-	true
 prometheus-bot	git@github.com:suportefafar/prometheus-bot.git	prometheus-bot	-	true
 design-system	git@github.com:suportefafar/design-system.git	design-system	design-system.farmacia.ufmg.br,design-system.farmacia.local	true
 laras2026-website	git@github.com:suportefafar/laras2026-website.git	laras2026-website	laras2026.farmacia.ufmg.br,laras2026.farmacia.local	true
+redacao	git@github.com:suportefafar/redacao.git	redacao	redacao.farmacia.ufmg.br,redacao.farmacia.local	false
 cronos	git@github.com:suportefafar/cronos.git	cronos	cronos.farmacia.ufmg.br,cronos.farmacia.local	true
 athenas	git@github.com:suportefafar/athenas.git	athenas,athenas-worker,athenas-ollama,athenas-model-setup,athenas-setup	athenas.farmacia.ufmg.br,athenas.farmacia.local	true
 reverse-proxy	git@github.com:suportefafar/reverse-proxy.git	reverse-proxy	-	true

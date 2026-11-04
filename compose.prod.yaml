@@ -335,6 +335,10 @@ services:
     build: {context: ../laras2026-website}
     volumes: !reset []
 
+  redacao:
+    image: olympus-redacao
+    build: {context: ../redacao}
+
   cronos:
     ports:
       - "10.10.10.1:123:123/udp"

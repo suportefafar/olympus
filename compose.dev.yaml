@@ -245,6 +245,16 @@ services:
     image: nginx:alpine
     volumes: [../laras2026-website:/usr/share/nginx/html:ro]
 
+  redacao:
+    image: nginx:alpine
+    volumes:
+      - ../redacao/index.html:/usr/share/nginx/html/index.html:ro
+      - ../redacao/styles.css:/usr/share/nginx/html/styles.css:ro
+      - ../redacao/script.js:/usr/share/nginx/html/script.js:ro
+      - ../redacao/data.js:/usr/share/nginx/html/data.js:ro
+      - ../redacao/icon.svg:/usr/share/nginx/html/icon.svg:ro
+      - ../redacao/faculty-icon.png:/usr/share/nginx/html/faculty-icon.png:ro
+
   cronos:
     volumes: [../cronos:/app]
     environment:
