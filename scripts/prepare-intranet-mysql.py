@@ -96,6 +96,8 @@ def main():
             f"GRANT SELECT, INSERT ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}fafar_cf7crud_submissions`",
             f"GRANT UPDATE (`is_active`) ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}fafar_cf7crud_submissions`",
             f"GRANT SELECT, INSERT, UPDATE (`is_active`) ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}fafar_cf7crud_submissions`",
+            f"GRANT UPDATE (is_active) ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}fafar_cf7crud_submissions`",
+            f"GRANT SELECT, INSERT, UPDATE (is_active) ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}fafar_cf7crud_submissions`",
             f"GRANT SELECT, UPDATE ON `intranet_wp`.`{values.get('WP_SYNC_TABLE_PREFIX', 'wp_')}intranet_ticket_number_sequence`",
         }
         for line in writer_output.splitlines():
