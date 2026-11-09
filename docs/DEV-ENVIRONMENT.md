@@ -1,6 +1,6 @@
 # Ambiente de desenvolvimento local
 
-No desenvolvimento, o WordPress (`intranet-website`) usa `http://intranet.farmacia.local` e a nova intranet Rails usa `http://intranet-stage.farmacia.local`. Para iniciar a aplicação e o proxy com as configurações locais, use `./olymctl dev up intranet --no-pull`.
+No desenvolvimento, o WordPress (`intranet-website`) usa `http://intranet-legacy.farmacia.local`. A intranet Rails atende `http://intranet.farmacia.local` e `http://intranet-stage.farmacia.local`. Para iniciar a aplicação e o proxy com as configurações locais, use `./olymctl dev up intranet --no-pull`.
 
 Os arquivos WordPress locais ficam diretamente em `fafar/institutional-website/`, `fafar/intranet-website/` e `fafar/escuta-website-wp/`, ao lado de `olympus/` e `intranet/`. Os serviços `institutional-website`, `intranet-website` e `wordpress-sync` usam `../institutional-website/html` e `../intranet-website/html` nos arquivos Compose. Preserve essas pastas, incluindo uploads e plugins, ao reorganizar os checkouts; elas contêm dados locais e não são preparadas pelo `olymctl`.
 

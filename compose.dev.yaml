@@ -69,7 +69,7 @@ services:
       INTRANET_DATABASE_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in olympus/.env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in olympus/.env}
-      INTRANET_PUBLIC_BASE_URL: http://intranet-stage.farmacia.local
+      INTRANET_PUBLIC_BASE_URL: http://intranet.farmacia.local
       HERMES_API_URL: http://hermes:80
       DIKE_API_URL: http://dike:3002
     volumes:
@@ -297,8 +297,8 @@ services:
       WORDPRESS_DB_NAME: intranet
       WORDPRESS_DEBUG: "1"
       WORDPRESS_CONFIG_EXTRA: |
-        define( 'WP_HOME', 'http://intranet.farmacia.local' );
-        define( 'WP_SITEURL', 'http://intranet.farmacia.local' );
+        define( 'WP_HOME', 'http://intranet-legacy.farmacia.local' );
+        define( 'WP_SITEURL', 'http://intranet-legacy.farmacia.local' );
         define( 'WP_ENVIRONMENT_TYPE', 'development' );
         define( 'DISABLE_WP_CRON', true );
     volumes:

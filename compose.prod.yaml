@@ -2,7 +2,7 @@ x-intranet-environment: &intranet-environment
   RAILS_ENV: production
   RAILS_MAX_THREADS: "3"
   WP_SYNC_RESERVE_NATIVE_TICKET_NUMBERS: "true"
-  INTRANET_PUBLIC_BASE_URL: https://intranet-stage.farmacia.ufmg.br
+  INTRANET_PUBLIC_BASE_URL: https://intranet.farmacia.ufmg.br
   CLAMAV_COMMAND: /rails/bin/scan-upload
 
 x-intranet-app: &intranet-app
@@ -326,6 +326,9 @@ services:
       WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in olympus/.env}
       WORDPRESS_DB_NAME: intranet
       WORDPRESS_DEBUG: "0"
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_HOME', 'https://intranet-legacy.farmacia.ufmg.br' );
+        define( 'WP_SITEURL', 'https://intranet-legacy.farmacia.ufmg.br' );
     volumes:
       - type: bind
         source: ${WORDPRESS_INTRANET_PATH:?Set WORDPRESS_INTRANET_PATH in olympus/.env}

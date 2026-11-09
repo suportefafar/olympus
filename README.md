@@ -78,7 +78,7 @@ revisions together through `olymctl prod --remote up escuta`.
 
 ## Current checkout readiness
 
-The verified app repositories are checked out beside Olympus. The Rails intranet runs only in development at `intranet-stage.farmacia.local`; the development WordPress intranet uses `intranet.farmacia.local`; the existing `intranet.farmacia.ufmg.br` route remains on legacy WordPress. The app manifest supports an optional environment scope for applications that are not deployed everywhere. No deployable institutional repository origin was found in the supplied inventory. The institutional and Intranet WordPress sites are provided by the Compose overlays using operator-supplied content paths and database credentials.
+The verified app repositories are checked out beside Olympus. Rails serves `intranet.farmacia.local` and `intranet-stage.farmacia.local` in development, and the matching `.ufmg.br` hosts in production. WordPress serves the legacy `intranet-legacy.farmacia.local` and `intranet-legacy.farmacia.ufmg.br` hosts. The app manifest supports an optional environment scope for applications that are not deployed everywhere. No deployable institutional repository origin was found in the supplied inventory. The institutional and Intranet WordPress sites are provided by the Compose overlays using operator-supplied content paths and database credentials.
 
 To refresh either production WordPress container, use `olymctl prod --remote up institutional-website` or `olymctl prod --remote up intranet-website` after committing and pushing the Olympus change. The production image combines the official WordPress Apache image with the PHP 8.3.36 CLI, Apache module and OPcache from the official patched PHP image. Both bases are pinned by digest. PHP 8.3.36 fixes CVE-2026-109618 and CVE-2026-109619. The image also disables session upload progress in PHP configuration before request parsing as the upstream mitigation for CVE-2026-115560 until a fixed PHP release is available. The command builds and validates the image before recreating the service, then checks the running container's PHP version and upload progress setting. WordPress files remain on their configured bind mounts; these services have no separate Git checkout.
 
@@ -132,9 +132,10 @@ O app `athenas` está registrado em desenvolvimento e produção, nos domínios 
 ## Intranet Rails and WordPress bridge
 
 `olymctl prod --remote up intranet` deploys Rails at
+`https://intranet.farmacia.ufmg.br` and
 `https://intranet-stage.farmacia.ufmg.br`, its Solid Queue worker, the temporary
-WordPress reader, database setup and antivirus definitions updater. The existing
-WordPress stays at `https://intranet.farmacia.ufmg.br`.
+WordPress reader, database setup and antivirus definitions updater. WordPress
+stays available at `https://intranet-legacy.farmacia.ufmg.br`.
 
 The production stage worker enables `config/recurring_stage.yml` explicitly:
 birthday posts run daily at 07:00 America/Sao_Paulo; equipment loan and auditorium
