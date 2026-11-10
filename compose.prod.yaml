@@ -293,11 +293,6 @@ services:
         read_only: true
         bind: {create_host_path: false}
       - type: bind
-        source: ${FAFAR_INSTITUTIONAL_THEME_PATH:?olymctl must prepare institutional components}
-        target: /var/www/html/wp-content/themes/institutional-astra-child-theme
-        read_only: true
-        bind: {create_host_path: false}
-      - type: bind
         source: ${FAFAR_INSTITUTIONAL_STANDALONE_THEME_PATH:?olymctl must prepare institutional components}
         target: /var/www/html/wp-content/themes/institutional-theme
         read_only: true

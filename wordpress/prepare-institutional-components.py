@@ -12,7 +12,6 @@ import tarfile
 import tempfile
 
 NAMES = {'fafar-cf7crud': 'FAFAR_INSTITUTIONAL_PLUGIN_PATH',
-         'institutional-astra-child-theme': 'FAFAR_INSTITUTIONAL_THEME_PATH',
          'institutional-theme': 'FAFAR_INSTITUTIONAL_STANDALONE_THEME_PATH'}
 
 def git(cache, *args):

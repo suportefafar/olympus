@@ -26,11 +26,9 @@ class ComponentTest(unittest.TestCase):
  def test_manifest_requires_all_exact_pins(self):
   path=self.root/'manifest';path.write_text('fafar-cf7crud\turl\t'+'a'*40+'\n')
   with self.assertRaises(ValueError):module.manifest(path)
-  path.write_text(path.read_text()+'institutional-astra-child-theme\turl\t'+'b'*40+'\n')
-  with self.assertRaises(ValueError):module.manifest(path)
+  path.write_text(path.read_text()+'institutional-theme\turl\t'+'b'*40+'\n')
+  self.assertEqual(2,len(module.manifest(path)))
   path.write_text(path.read_text()+'institutional-theme\turl\t'+'c'*40+'\n')
-  self.assertEqual(3,len(module.manifest(path)))
-  path.write_text(path.read_text()+'institutional-theme\turl\t'+'d'*40+'\n')
   with self.assertRaises(ValueError):module.manifest(path)
  def test_uncached_no_pull_fails_without_network(self):
   path=self.root/'manifest';path.write_text(''.join(f'{name}\tunused-url\t'+ 'a'*40+'\n' for name in module.NAMES))
