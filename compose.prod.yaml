@@ -283,6 +283,7 @@ services:
       WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in olympus/.env}
       WORDPRESS_DB_NAME: institutional
       WORDPRESS_DEBUG: "0"
+      WP_ENVIRONMENT_TYPE: production
     volumes:
       - type: bind
         source: ${WORDPRESS_INSTITUTIONAL_PATH:?Set WORDPRESS_INSTITUTIONAL_PATH in olympus/.env}
