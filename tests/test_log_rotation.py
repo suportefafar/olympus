@@ -21,7 +21,7 @@ def container(service, status='running', policy=None):
             'State': {'Status': status, 'Health': {'Status': 'healthy'}},
             'HostConfig': {'LogConfig': policy or {'Type': 'json-file', 'Config': {}}},
             'Config': {'Labels': {'com.docker.compose.service': service,
-                                 'com.docker.compose.config-hash': service + '-hash'}}}
+                                 'com.docker.compose.config-hash': service + '-hash'}, 'Image': service + ':latest'}}
 
 
 class LogRotationTest(unittest.TestCase):
@@ -33,6 +33,8 @@ class LogRotationTest(unittest.TestCase):
         self.model['services']['web']['depends_on'] = {'database': {}}
         self.runs = []
         self.completed = []
+        self.image_resolver = lambda reference: reference
+        self.expected_images = {}
 
     def output(self, command):
         if command[-3:] == ['config', '--format', 'json']:
@@ -55,17 +57,18 @@ class LogRotationTest(unittest.TestCase):
             image_file = Path(command[command.index('up') - 1])
             images = json.loads(image_file.read_text())['services']
             for service in images:
-                self.assertEqual('sha256:' + service, images[service]['image'])
+                self.assertEqual(self.expected_images.get(service, 'sha256:' + service), images[service]['image'])
                 self.assertEqual('never', images[service]['pull_policy'])
             self.assertNotIn('setup', images)
         return subprocess.CompletedProcess(command, 0)
 
-    def apply(self):
+    def apply(self, allow_current_images=False):
         with patch.object(rotation, 'output', side_effect=self.output), \
                 patch.object(rotation, 'inspect', side_effect=self.inspect), \
+                patch.object(rotation, 'image_id', side_effect=self.image_resolver), \
                 patch.object(rotation.subprocess, 'run', side_effect=self.run_command), \
                 patch.object(rotation, 'ready', side_effect=lambda *args: self.completed.append(args)):
-            rotation.apply(COMPOSE)
+            rotation.apply(COMPOSE, allow_current_images)
 
     def test_only_running_services_recreated_with_same_images_and_no_dependencies(self):
         self.apply()
@@ -88,6 +91,22 @@ class LogRotationTest(unittest.TestCase):
             item['HostConfig']['LogConfig'] = copy.deepcopy(POLICY)
         self.apply()
         self.assertEqual([], self.runs)
+
+    def test_unavailable_old_image_is_deferred_without_restarting_that_service(self):
+        self.image_resolver = lambda reference: None if reference == 'sha256:web' else reference
+        with self.assertRaisesRegex(RuntimeError, 'still deferred: web'):
+            self.apply()
+        self.assertEqual(['database'], [c[-1] for c in self.runs if 'up' in c])
+
+    def test_explicit_image_change_uses_available_local_image_without_pulling(self):
+        self.image_resolver = lambda reference: (None if reference == 'sha256:web'
+                                                else 'sha256:web-new' if reference == 'web:latest'
+                                                else reference)
+        self.expected_images['web'] = 'sha256:web-new'
+        self.apply(allow_current_images=True)
+        self.assertEqual('sha256:web-new', self.completed[-1][2])
+        ups = [c for c in self.runs if 'up' in c]
+        self.assertTrue(all('--no-build' in c and c[c.index('--pull') + 1] == 'never' for c in ups))
 
     def test_ready_rejects_changed_image_or_missing_effective_policy(self):
         for change, error in [('Image', 'image changed'), ('HostConfig', 'log policy')]:

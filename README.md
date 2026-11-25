@@ -75,6 +75,10 @@ jobs. It refuses unrelated Compose configuration drift before changing services,
 and waits for previously healthy containers to become healthy again. Stopped
 services receive the policy on their next normal deployment. Existing container
 logs disappear on recreation; preserve any diagnostic history needed beforehand.
+If an old running image is unavailable locally, that service is deferred while
+available services are rotated. After explicitly reviewing and approving image
+changes, add `--allow-current-images` to use the configured local images for
+those services; this option still never builds or pulls images.
 
 ## Escuta project rename
 

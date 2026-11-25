@@ -37,6 +37,15 @@ def baseline_command(compose):
     return baseline
 
 
+def image_id(reference):
+    try:
+        result = subprocess.check_output(["docker", "image", "inspect", reference],
+                                         text=True, stderr=subprocess.DEVNULL)
+        return json.loads(result)[0]["Id"]
+    except subprocess.CalledProcessError:
+        return None
+
+
 def ready(compose, service, image, logging, was_healthy, timeout=120):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -58,13 +67,14 @@ def ready(compose, service, image, logging, was_healthy, timeout=120):
     raise RuntimeError(f"{service}: did not recover its previous readiness within {timeout}s.")
 
 
-def apply(compose):
+def apply(compose, allow_current_images=False):
     model = json.loads(output([*compose, "config", "--format", "json"]))
     hashes = dict(line.split() for line in output(
         [*baseline_command(compose), "config", "--hash", "*"]).splitlines() if line.strip())
     ids = output([*compose, "ps", "--all", "--quiet"]).split()
     containers = inspect(ids) if ids else []
     pending = {}
+    unavailable = []
     for container in containers:
         if container["State"]["Status"] != "running":
             continue
@@ -82,14 +92,27 @@ def apply(compose):
             raise RuntimeError(f"{service}: unrelated Compose configuration drift; refusing to deploy.")
         if service in pending:
             raise RuntimeError(f"{service}: multiple replicas require a separate rollout.")
-        pending[service] = (container, desired)
+        target_image = image_id(container["Image"])
+        if target_image is None:
+            if allow_current_images:
+                target_image = image_id(container["Config"]["Image"])
+                if target_image is None:
+                    raise RuntimeError(f"{service}: neither running nor configured image is available locally.")
+                info(f"{service}: using the approved locally available image {target_image}.")
+            else:
+                unavailable.append(service)
+                info(f"Deferring {service}: its running image is unavailable locally.")
+                continue
+        pending[service] = (container, desired, target_image)
     if not pending:
+        if unavailable:
+            raise RuntimeError("Running images unavailable; deferred: " + ", ".join(sorted(unavailable)))
         info("All running services already have the requested log rotation policy.")
         return
 
     # All drift checks finish before changing any containers. Pin images because a
     # mutable tag may have been rebuilt since a running container was created.
-    overrides = {"services": {service: {"image": item[0]["Image"], "pull_policy": "never"}
+    overrides = {"services": {service: {"image": item[2], "pull_policy": "never"}
                              for service, item in pending.items()}}
     with tempfile.TemporaryDirectory(prefix="olympus-logging-") as directory:
         override = Path(directory) / "images.json"
@@ -108,26 +131,33 @@ def apply(compose):
             remaining.difference_update(available)
         info(f"Applying log rotation to {len(order)} running services; stopped services are preserved.")
         for service in order:
-            previous, desired = pending[service]
+            previous, desired, target_image = pending[service]
             current = inspect([previous["Id"]])[0]
             if current["State"]["Status"] != "running":
                 raise RuntimeError(f"{service}: state changed during rollout; refusing to start it.")
             was_healthy = previous["State"].get("Health", {}).get("Status") == "healthy"
-            info(f"Recreating {service} with its existing image and bounded logs.")
+            info(f"Recreating {service} with pinned image {target_image} and bounded logs.")
             subprocess.run([*command, "up", "-d", "--no-deps", "--no-build", "--pull", "never",
                             "--force-recreate", service], check=True)
-            ready(command, service, previous["Image"], desired, was_healthy)
+            ready(command, service, target_image, desired, was_healthy)
             info(f"Verified {service}: {desired['Config']['max-file']} log files, "
                  f"{desired['Config']['max-size']} bytes each.")
+
+    if unavailable:
+        raise RuntimeError("Rotation applied to available images; still deferred: "
+                           + ", ".join(sorted(unavailable)))
 
 
 def main():
     arguments = sys.argv[1:]
     if arguments[:1] == ["--"]:
         arguments = arguments[1:]
+    allow_current_images = arguments[:1] == ["--allow-current-images"]
+    if allow_current_images:
+        arguments = arguments[1:]
     if arguments[:2] != ["docker", "compose"]:
         raise RuntimeError("Expected the Olympus Docker Compose command.")
-    apply(arguments)
+    apply(arguments, allow_current_images)
 
 
 if __name__ == "__main__":
