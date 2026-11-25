@@ -1,0 +1,39 @@
+# Production stdout/stderr: 10 files of 100 MB = 1 GB per service container.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "100000000"
+    max-file: "10"
+
+services:
+  athenas: {logging: *logging}
+  athenas-model-setup: {logging: *logging}
+  athenas-ollama: {logging: *logging}
+  athenas-setup: {logging: *logging}
+  athenas-worker: {logging: *logging}
+  chatrapido: {logging: *logging}
+  ciclum: {logging: *logging}
+  cronos: {logging: *logging}
+  design-system: {logging: *logging}
+  dike: {logging: *logging}
+  escuta: {logging: *logging}
+  hermes: {logging: *logging}
+  institutional-website: {logging: *logging}
+  intranet: {logging: *logging}
+  intranet-antivirus: {logging: *logging}
+  intranet-setup: {logging: *logging}
+  intranet-website: {logging: *logging}
+  intranet-worker: {logging: *logging}
+  laras2026-website: {logging: *logging}
+  mongo-db: {logging: *logging}
+  mysql-db: {logging: *logging}
+  nodus-api: {logging: *logging}
+  nodus-client: {logging: *logging}
+  nodus-search: {logging: *logging}
+  postgres-db: {logging: *logging}
+  prometheus-bot: {logging: *logging}
+  redacao: {logging: *logging}
+  reverse-proxy: {logging: *logging}
+  stagemanager: {logging: *logging}
+  temis: {logging: *logging}
+  wordpress-sync: {logging: *logging}

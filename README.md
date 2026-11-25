@@ -60,6 +60,22 @@ The first `up` prepares missing checkouts from `apps.tsv` and the reverse proxy,
 Compose and repository inventory are initial migration choices based on `current-infra/services-infra`. Review service-specific database variables, health checks, secrets, proxy routes, and data migration before production use. The legacy stack combines application configuration in one root `.env`; this orchestrator deliberately does not carry that file forward.
 
 
+## Production log rotation
+
+Production container stdout/stderr uses `json-file`, with ten files of
+100,000,000 bytes each (1 GB per service container), configured in
+`compose.logging.yaml`. Docker removes the oldest file on rotation. HTTP access
+logs written separately by Caddy retain their existing policy.
+
+After committing and pushing Olympus, apply the policy to existing running
+services with `olymctl prod --remote up --logging-only`. This recreates running
+services one at a time using their exact current image IDs, without building,
+pulling application code/images, starting stopped services, or running setup
+jobs. It refuses unrelated Compose configuration drift before changing services,
+and waits for previously healthy containers to become healthy again. Stopped
+services receive the policy on their next normal deployment. Existing container
+logs disappear on recreation; preserve any diagnostic history needed beforehand.
+
 ## Escuta project rename
 
 Escuta now uses `git@github.com:suportefafar/escuta.git`, the `escuta/` checkout,
