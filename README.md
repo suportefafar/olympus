@@ -80,6 +80,16 @@ available services are rotated. After explicitly reviewing and approving image
 changes, add `--allow-current-images` to use the configured local images for
 those services; this option still never builds or pulls images.
 
+## Recovering stopped production services
+
+Use `olymctl prod --remote up --recover-stopped` after fixing a shared dependency
+or disk issue. It recreates only failed/stopped continuous containers whose
+restart policy is `always` or `unless-stopped`, using installed images and the
+current Compose configuration (including log rotation). It never builds/pulls
+images, starts dependencies, recreates running containers, or reruns one-shot
+initializers. Successful `*-setup` and `*-model-setup` containers should remain
+exited with code 0. Check application health after the command returns.
+
 ## Escuta project rename
 
 Escuta now uses `git@github.com:suportefafar/escuta.git`, the `escuta/` checkout,

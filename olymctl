@@ -613,6 +613,35 @@ apply_log_rotation() {
   info "Log rotation deployment $id completed."
 }
 
+recover_stopped_services() {
+  ENVIRONMENT=prod
+  check_prerequisites
+  compose_files
+  local container_ids id metadata service state restart lifecycle event
+  local -a services=()
+  container_ids="$("${COMPOSE[@]}" ps -a -q)" || fail "Could not list production containers."
+  while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    metadata="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}|{{.State.Status}}|{{.HostConfig.RestartPolicy.Name}}|{{index .Config.Labels "olympus.lifecycle"}}' "$id")" || fail "Could not inspect $id."
+    IFS='|' read -r service state restart lifecycle <<<"$metadata"
+    [[ "$lifecycle" != oneshot ]] || continue
+    [[ "$restart" == always || "$restart" == unless-stopped ]] || continue
+    case "$state" in exited|restarting|dead|created) services+=("$service");; esac
+  done <<<"$container_ids"
+  if ((${#services[@]} == 0)); then
+    info "No stopped continuous production services need recovery."
+    return 0
+  fi
+  info "Recovering continuous services with installed images: ${services[*]}"
+  event="$(record prod recovery "${services[*]}" "" "" started)"
+  if ! "${COMPOSE[@]}" up -d --no-deps --no-build --pull never --force-recreate "${services[@]}"; then
+    record prod recovery "${services[*]}" "" "" failed "deploy=$event" >/dev/null
+    fail "Recovery $event failed; inspect the selected services."
+  fi
+  record prod recovery "${services[*]}" "" "" success "deploy=$event" >/dev/null
+  info "Recovery $event started ${services[*]}; verify their runtime health."
+}
+
 up_dev_infrastructure() {
   local service="$1" id
   ENVIRONMENT=dev; check_prerequisites
@@ -713,6 +742,7 @@ Usage:
   olymctl dev up [app|reverse-proxy|postgres-db|mongo-db|mysql-db] [--no-pull] [--branch NAME] [--commit SHA]
   olymctl prod [--remote] up [app|nextcloud] [--no-pull] [--branch NAME] [--commit SHA] [--prepare-only]
   olymctl prod [--remote] up --logging-only [--allow-current-images]
+  olymctl prod [--remote] up --recover-stopped
   olymctl dev|prod [--remote] rollback app [--commit SHA]
   olymctl prod --remote down app
   olymctl dev|prod [--remote] status
@@ -725,7 +755,7 @@ main() {
   [[ $# -ge 1 ]] || { usage; exit 2; }
   local -a original_args=("$@")
   if [[ "$1" == history ]]; then [[ -f "$HISTORY" ]] && cat "$HISTORY" || info "No deploy history yet."; return; fi
-  local env="$1" action="" app="" no_pull=false branch="" commit="" remote=false prepare_only=false logging_only=false allow_current_images=false
+  local env="$1" action="" app="" no_pull=false branch="" commit="" remote=false prepare_only=false logging_only=false allow_current_images=false recover_stopped=false
   shift
   if [[ "${1:-}" == --remote ]]; then remote=true; shift; fi
   action="${1:-}"
@@ -734,7 +764,10 @@ main() {
   case "$action" in
     up)
       if [[ $# -gt 0 && "$1" != --* ]]; then app="$1"; shift; fi
-      while (($#)); do case "$1" in --no-pull) no_pull=true;; --branch) (($#>=2)) || fail "--branch needs a value"; branch="$2"; shift;; --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; --remote) remote=true;; --prepare-only) prepare_only=true;; --logging-only) logging_only=true;; --allow-current-images) allow_current_images=true;; *) fail "Unknown up option: $1";; esac; shift; done
+      while (($#)); do case "$1" in --no-pull) no_pull=true;; --branch) (($#>=2)) || fail "--branch needs a value"; branch="$2"; shift;; --commit) (($#>=2)) || fail "--commit needs a value"; commit="$2"; shift;; --remote) remote=true;; --prepare-only) prepare_only=true;; --logging-only) logging_only=true;; --allow-current-images) allow_current_images=true;; --recover-stopped) recover_stopped=true;; *) fail "Unknown up option: $1";; esac; shift; done
+      if [[ "$recover_stopped" == true ]]; then
+        [[ "$env" == prod && -z "$app$branch$commit" && "$prepare_only" == false && "$logging_only" == false && "$allow_current_images" == false ]] || fail "--recover-stopped requires prod up without an app, revision, or another maintenance option."
+      fi
       [[ "$allow_current_images" == false || "$logging_only" == true ]] || fail "--allow-current-images requires --logging-only."
       if [[ "$logging_only" == true ]]; then
         [[ "$env" == prod && -z "$app$branch$commit" && "$prepare_only" == false ]] || fail "--logging-only requires prod up without an app, revision, or --prepare-only."
@@ -760,10 +793,13 @@ main() {
         [[ "$prepare_only" == false ]] || remote_args+=(--prepare-only)
         [[ "$logging_only" == false ]] || remote_args+=(--logging-only)
         [[ "$allow_current_images" == false ]] || remote_args+=(--allow-current-images)
+        [[ "$recover_stopped" == false ]] || remote_args+=(--recover-stopped)
         run_remote_prod up "${remote_args[@]}"
       else
         update_olympus "$no_pull" "${original_args[@]}"
-        if [[ "$logging_only" == true ]]; then
+        if [[ "$recover_stopped" == true ]]; then
+          recover_stopped_services
+        elif [[ "$logging_only" == true ]]; then
           apply_log_rotation "$allow_current_images"
         else
           up "$env" "$app" "$no_pull" "$branch" "$commit" "$prepare_only"
